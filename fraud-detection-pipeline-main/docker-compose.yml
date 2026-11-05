@@ -61,7 +61,10 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KAFKA_TOPIC: transactions
-      TRANSACTIONS_PER_SECOND: "100"
+      TRANSACTIONS_PER_SECOND: "25"
+      CSV_FILE_PATH: /app/fraudTest.csv
+    volumes:
+      - ../fraudTest.csv:/app/fraudTest.csv:ro
     restart: on-failure
 
   consumer:

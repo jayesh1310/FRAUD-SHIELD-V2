@@ -11,6 +11,8 @@ fraud_rf_model/
 # Runtime output (flagged fraud copied from Docker containers)
 temp_flagged/
 temp_flagged_dash/
+temp_flagged_xgb/
+archive_flagged/
 
 # Training data
 training_data/

@@ -184,6 +184,52 @@ This penalizes fraud misclassification ~25–50× more heavily, and runs entirel
 
 ---
 
+## Machine Learning Models & Comparison
+
+The project provides two production-grade machine learning models trained on the streaming transaction schema:
+
+### 1. PySpark MLlib Random Forest (`train_model_pipeline.py`)
+- **Type**: Ensemble Bagging (Decision Trees)
+- **Configuration**: 100 trees, max depth = 10, weighted class loss
+- **Artifact**: `fraud_rf_model/` (PySpark PipelineModel)
+- **Use Case**: Native distributed execution inside Spark Structured Streaming consumer
+
+### 2. Extreme Gradient Boosting - XGBoost (`train_xgboost_model.py`)
+- **Type**: Ensemble Boosting (Gradient Boosted Decision Trees)
+- **Configuration**: 100 estimators, max depth = 6, learning rate = 0.1, subsample = 0.8, `scale_pos_weight` = 15.32
+- **Artifacts**: `fraud_xgb_model.json` & `fraud_xgb_pipeline.joblib`
+- **Use Case**: State-of-the-art tabular classification, ultra-fast microsecond inference latency
+
+### Real-World Benchmark Performance (Trained on Kaggle Sparkov Dataset)
+
+Evaluated on **50,000 real unseen test transactions** from \raudTest.csv\ (199 actual fraudulent transactions):
+
+| Metric / Dimension | Random Forest (Spark MLlib) | XGBoost Classifier (Real-World) |
+|---|---|---|
+| **Ensemble Paradigm** | Bagging (Parallel Independent Trees) | Boosting (Sequential Error Correction) |
+| **Accuracy** | 98.70% | **98.95%** |
+| **AUC-ROC** | 0.9821 | **0.9902** |
+| **AUC-PR** | 0.7634 | **0.6501** |
+| **F1 Score** | 0.3540 | **0.3902** |
+| **Fraud Catch Rate (Recall)** | 78.89% | **84.42%** (168 of 199 caught) |
+| **False Alarm Rate** | 1.12% | **0.9919%** (494 false positives / 49,801 legit) |
+| **Confusion Matrix** | \TP=157, FP=558, FN=42, TN=49,243\ | \TP=168, FP=494, FN=31, TN=49,307\ |
+| **Class Balancing** | Sample weight column (\classWeight\) | Loss scaling parameter (\scale_pos_weight\) |
+| **Training Latency** | ~30 - 45s (Spark JVM overhead) | **~1.8s (C++ optimized engine)** |
+| **Model Size / Format** | Distributed directory (\raud_rf_model/\) | Compact JSON / Joblib (\raud_xgb_pipeline.joblib\) |
+
+---
+
+## One-Click Launchers (Windows)
+
+The repository provides ready-to-run automation scripts:
+
+- **un_real_dataset_stream.bat\**: Checks Docker, launches all 6 containers, starts the live stream from \raudTest.csv\, resets session counters to 0, launches the Dashboard on \http://localhost:5050\, and starts the XGBoost live consumer.
+- **un_xgboost_with_dashboard.bat\**: Launches the pipeline, opens the Dashboard, and starts the XGBoost live scoring consumer.
+- **\stop_project.bat\**: Gracefully terminates all 6 Docker containers, stops Python background workers, and releases ports 5050 and 9092.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -215,7 +261,18 @@ docker logs fraud-consumer -f
 
 Open [http://localhost:8080](http://localhost:8080) for the Spark Master dashboard, or [http://localhost:4040](http://localhost:4040) for the Spark application UI showing streaming micro-batches.
 
-### 4. Launch the FraudShield Dashboard
+### 4. Run Live Streaming Fraud Detection with XGBoost
+
+To score the live Kafka transaction stream directly using the **XGBoost model**:
+
+```bash
+# In the project root folder:
+python stream_consumer_xgb.py
+```
+
+This connects directly to the Kafka stream (`localhost:9092`), computes real-time feature engineering, feeds each transaction into `fraud_xgb_pipeline.joblib`, prints live color-coded fraud alerts, and saves flagged fraud transactions to `./temp_flagged_xgb/` in Parquet format.
+
+### 5. Launch the FraudShield Dashboard
 
 ```bash
 cd dashboard
@@ -253,16 +310,21 @@ docker compose down
 
 ---
 
-## Re-Training the Model
+## Re-Training the Models
 
-To retrain the Random Forest model on new data:
-
+### Retrain the Random Forest Pipeline:
 ```bash
 # Ensure you have PySpark and Java configured
 python train_model_pipeline.py
 ```
+This reads `training_data_clean.parquet`, runs feature engineering, trains the 6-stage PySpark pipeline, evaluates metrics, and exports the model to `fraud_rf_model/`.
 
-This reads `training_data_clean.parquet`, runs feature engineering, trains the 6-stage pipeline, evaluates metrics, and exports the model to `fraud_rf_model/`.
+### Train / Retrain the XGBoost Model:
+```bash
+# Ensure you have xgboost and scikit-learn installed
+python train_xgboost_model.py
+```
+This trains an XGBoost classifier with stratified 80/20 train/test evaluation, outputs comprehensive metrics (AUC-ROC, F1, Confusion Matrix, Gain feature importances), and saves `fraud_xgb_model.json` and `fraud_xgb_pipeline.joblib`.
 
 ---
 
