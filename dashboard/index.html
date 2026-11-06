@@ -3,1808 +3,1529 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FraudShield 2.0 — Big Data Fraud Detection</title>
+  <title>FraudShield 2.0 &mdash; Financial Fraud Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    /* ===================== CSS VARIABLES ===================== */
+    /* ==========================================================================
+       DESIGN SYSTEM (MINIMALIST / HIGH-DENSITY FINTECH)
+       ========================================================================== */
     :root {
-      --bg-primary: #0d1117;
-      --bg-card: #1c2128;
-      --bg-card-hover: #262c36;
-      --border: #30363d;
-      --text-primary: #e6edf3;
-      --text-secondary: #8b949e;
-      --accent-blue: #58a6ff;
-      --accent-green: #3fb950;
-      --accent-red: #f85149;
-      --accent-yellow: #d29922;
-      --accent-gold: #ffd700;
-      --lr-color: #4f7bdf;
-      --rf-color: #2ecc71;
-      --xgb-color: #e74c3c;
-      --radius: 8px;
-      --radius-lg: 12px;
-      --transition: 0.2s ease;
+      --bg-base: #090a0f;
+      --bg-surface: #11131a;
+      --bg-surface-elevated: #161922;
+      --bg-surface-hover: #1c202c;
+      
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --border-default: rgba(255, 255, 255, 0.1);
+      --border-strong: rgba(255, 255, 255, 0.16);
+
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --text-faint: #475569;
+
+      /* Functional Signals */
+      --color-emerald: #10b981;
+      --color-emerald-bg: rgba(16, 185, 129, 0.08);
+      --color-emerald-border: rgba(16, 185, 129, 0.2);
+
+      --color-rose: #f43f5e;
+      --color-rose-bg: rgba(244, 63, 94, 0.08);
+      --color-rose-border: rgba(244, 63, 94, 0.2);
+
+      --color-amber: #f59e0b;
+      --color-amber-bg: rgba(245, 158, 11, 0.08);
+      --color-amber-border: rgba(245, 158, 11, 0.2);
+
+      --color-sky: #38bdf8;
+      --color-sky-bg: rgba(56, 189, 248, 0.08);
+      --color-sky-border: rgba(56, 189, 248, 0.2);
+
+      /* Model Identity Colors */
+      --color-lr: #60a5fa;
+      --color-rf: #34d399;
+      --color-xgb: #f87171;
+
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
     }
 
-    /* ===================== RESET & BASE ===================== */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+      font-size: 14px;
+    }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-primary);
+      font-family: var(--font-sans);
+      background-color: var(--bg-base);
       color: var(--text-primary);
-      font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       min-height: 100vh;
     }
 
-    a { color: var(--accent-blue); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    a {
+      color: var(--text-primary);
+      text-decoration: none;
+    }
 
-    /* ===================== SCROLLBAR ===================== */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-primary); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-    /* ===================== NAVIGATION ===================== */
-    .navbar {
+    /* ==========================================================================
+       TOP NAVIGATION BAR
+       ========================================================================== */
+    .header {
       position: sticky;
       top: 0;
-      z-index: 1000;
-      background: rgba(13, 17, 23, 0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      background: rgba(9, 10, 15, 0.88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-subtle);
+      height: 52px;
       padding: 0 24px;
       display: flex;
       align-items: center;
-      gap: 24px;
-      height: 60px;
+      justify-content: space-between;
     }
 
-    .navbar-brand {
+    .brand-group {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-weight: 800;
-      font-size: 18px;
-      letter-spacing: -0.5px;
-      white-space: nowrap;
-      color: var(--text-primary);
+      gap: 12px;
     }
 
-    .navbar-brand .shield-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, var(--accent-blue), #7c3aed);
-      border-radius: 8px;
+    .brand-mark {
+      width: 20px;
+      height: 20px;
+      border: 1.5px solid var(--text-primary);
+      border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
-      flex-shrink: 0;
     }
 
-    .navbar-brand .version-badge {
-      font-size: 10px;
-      font-weight: 600;
-      background: var(--accent-blue);
-      color: #0d1117;
-      padding: 2px 6px;
-      border-radius: 4px;
-      letter-spacing: 0.5px;
+    .brand-mark-inner {
+      width: 6px;
+      height: 6px;
+      background: var(--text-primary);
+      border-radius: 1px;
     }
 
-    .navbar-nav {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      flex: 1;
-      overflow-x: auto;
-    }
-
-    .nav-link {
-      color: var(--text-secondary);
+    .brand-title {
       font-size: 13px;
-      font-weight: 500;
-      padding: 6px 12px;
-      border-radius: 6px;
-      white-space: nowrap;
-      transition: color var(--transition), background var(--transition);
-      cursor: pointer;
-      border: none;
-      background: none;
-      font-family: inherit;
-    }
-
-    .nav-link:hover { color: var(--text-primary); background: var(--bg-card); text-decoration: none; }
-    .nav-link.active { color: var(--accent-blue); background: rgba(88, 166, 255, 0.1); }
-
-    .navbar-controls {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-
-    .pipeline-status {
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .brand-version {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border: 1px solid var(--border-default);
+      padding: 1px 5px;
+      border-radius: var(--radius-sm);
+    }
+
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .nav-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
       font-size: 12px;
       font-weight: 500;
-      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+
+    .nav-tab:hover {
+      color: var(--text-primary);
+      background: var(--bg-surface-elevated);
+    }
+
+    .nav-tab.active {
+      color: var(--text-primary);
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       padding: 4px 10px;
       border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--bg-card);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
     }
 
     .status-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background: var(--accent-red);
-      transition: background var(--transition);
-      flex-shrink: 0;
+      background: var(--color-rose);
     }
 
-    .status-dot.running {
-      background: var(--accent-green);
-      box-shadow: 0 0 6px var(--accent-green);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    .status-dot.active {
+      background: var(--color-emerald);
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 7px 14px;
-      border-radius: 6px;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 500;
+      font-family: var(--font-sans);
       cursor: pointer;
-      border: 1px solid transparent;
-      font-family: inherit;
-      transition: all var(--transition);
+      transition: all 0.15s ease;
       white-space: nowrap;
+      border: 1px solid var(--border-default);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+    }
+
+    .btn:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .btn-primary {
-      background: var(--accent-blue);
-      color: #0d1117;
-      border-color: var(--accent-blue);
+      background: #f8fafc;
+      color: #090a0f;
+      border-color: #f8fafc;
+      font-weight: 600;
     }
-    .btn-primary:hover { background: #79b8ff; border-color: #79b8ff; }
+
+    .btn-primary:hover {
+      background: #e2e8f0;
+      border-color: #e2e8f0;
+      color: #090a0f;
+    }
 
     .btn-danger {
-      background: transparent;
-      color: var(--accent-red);
-      border-color: var(--accent-red);
-    }
-    .btn-danger:hover { background: rgba(248, 81, 73, 0.1); }
-
-    .btn-secondary {
-      background: var(--bg-card);
-      color: var(--text-secondary);
-      border-color: var(--border);
-    }
-    .btn-secondary:hover { color: var(--text-primary); border-color: #484f58; }
-
-    /* ===================== TOAST ===================== */
-    .toast-container {
-      position: fixed;
-      top: 70px;
-      right: 20px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      color: var(--color-rose);
+      border-color: var(--color-rose-border);
+      background: var(--color-rose-bg);
     }
 
-    .toast {
-      padding: 12px 18px;
-      border-radius: var(--radius);
-      border: 1px solid;
-      font-size: 13px;
-      font-weight: 500;
-      max-width: 320px;
-      animation: slideIn 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.16);
+      color: #fff;
     }
 
-    .toast.success {
-      background: rgba(63, 185, 80, 0.15);
-      border-color: var(--accent-green);
-      color: var(--accent-green);
+    .btn-icon {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
     }
 
-    .toast.error {
-      background: rgba(248, 81, 73, 0.15);
-      border-color: var(--accent-red);
-      color: var(--accent-red);
-    }
-
-    .toast.info {
-      background: rgba(88, 166, 255, 0.15);
-      border-color: var(--accent-blue);
-      color: var(--accent-blue);
-    }
-
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-
-    @keyframes slideOut {
-      from { transform: translateX(0); opacity: 1; }
-      to { transform: translateX(100%); opacity: 0; }
-    }
-
-    /* ===================== MAIN LAYOUT ===================== */
-    .main-content {
-      max-width: 1600px;
+    /* ==========================================================================
+       MAIN CONTAINER & SECTIONS
+       ========================================================================== */
+    .container {
+      max-width: 1520px;
       margin: 0 auto;
       padding: 24px;
     }
 
-    /* ===================== SECTION HEADERS ===================== */
     .section {
-      margin-bottom: 36px;
-      scroll-margin-top: 72px;
+      margin-bottom: 32px;
+      scroll-margin-top: 68px;
     }
 
     .section-header {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       justify-content: space-between;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
     }
 
     .section-title {
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
       color: var(--text-primary);
+    }
+
+    .section-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
       display: flex;
       align-items: center;
+      gap: 6px;
+    }
+
+    /* ==========================================================================
+       CARDS & PANELS
+       ========================================================================== */
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      transition: border-color 0.15s ease;
+    }
+
+    .panel:hover {
+      border-color: var(--border-default);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    /* ==========================================================================
+       METRICS GRID (OVERVIEW)
+       ========================================================================== */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 4px;
+    }
+
+    .metric-sub {
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+
+    .metric-value.emerald { color: var(--color-emerald); }
+    .metric-value.rose { color: var(--color-rose); }
+    .metric-value.amber { color: var(--color-amber); }
+
+    /* ==========================================================================
+       INFRASTRUCTURE SERVICES (CONTAINERS)
+       ========================================================================== */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
       gap: 8px;
     }
 
-    .section-title .section-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
+    .service-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-    }
-
-    .section-subtitle {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 2px;
-    }
-
-    .refresh-badge {
-      font-size: 11px;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
+      flex-direction: column;
       gap: 4px;
     }
 
-    .refresh-badge .dot {
+    .service-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .service-name {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .service-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--accent-green);
-      animation: pulse 2s infinite;
-    }
-
-    /* ===================== CARDS ===================== */
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      transition: background var(--transition), border-color var(--transition);
-    }
-
-    .card:hover { background: var(--bg-card-hover); }
-
-    .card-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-    }
-
-    /* ===================== STATS GRID ===================== */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-
-    .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      position: relative;
-      overflow: hidden;
-      transition: all var(--transition);
-    }
-
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-    }
-
-    .stat-card.blue::before { background: var(--accent-blue); }
-    .stat-card.red::before { background: var(--accent-red); }
-    .stat-card.green::before { background: var(--accent-green); }
-    .stat-card.yellow::before { background: var(--accent-yellow); }
-
-    .stat-card:hover { background: var(--bg-card-hover); transform: translateY(-2px); }
-
-    .stat-label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 32px;
-      font-weight: 800;
-      line-height: 1;
-      margin-bottom: 6px;
-      letter-spacing: -1px;
-    }
-
-    .stat-value.blue { color: var(--accent-blue); }
-    .stat-value.red { color: var(--accent-red); }
-    .stat-value.green { color: var(--accent-green); }
-    .stat-value.yellow { color: var(--accent-yellow); }
-
-    .stat-meta {
-      font-size: 11px;
-      color: var(--text-secondary);
-    }
-
-    .stat-icon {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      font-size: 24px;
-      opacity: 0.3;
-    }
-
-    /* ===================== CONTAINER HEALTH ===================== */
-    .container-health-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 12px;
-    }
-
-    .container-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      transition: all var(--transition);
-    }
-
-    .container-card:hover { background: var(--bg-card-hover); }
-
-    .container-status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
+      background: var(--color-rose);
       flex-shrink: 0;
     }
 
-    .container-status-dot.up {
-      background: var(--accent-green);
-      box-shadow: 0 0 6px var(--accent-green);
+    .service-dot.online {
+      background: var(--color-emerald);
     }
 
-    .container-status-dot.down {
-      background: var(--accent-red);
+    .service-status-text {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
     }
 
-    .container-info { flex: 1; min-width: 0; }
-
-    .container-name {
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .container-status-text {
-      font-size: 11px;
-      color: var(--text-secondary);
-    }
-
-    .container-status-text.up { color: var(--accent-green); }
-    .container-status-text.down { color: var(--accent-red); }
-
-    /* ===================== ALERT BANNER ===================== */
-    .alert-banner {
-      padding: 14px 18px;
-      border-radius: var(--radius);
-      border: 1px solid;
-      margin-bottom: 16px;
-      font-size: 13px;
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .alert-banner.warning {
-      background: rgba(210, 153, 34, 0.1);
-      border-color: var(--accent-yellow);
-      color: var(--accent-yellow);
-    }
-
-    .alert-banner.info {
-      background: rgba(88, 166, 255, 0.1);
-      border-color: var(--accent-blue);
-      color: var(--accent-blue);
-    }
-
-    .alert-banner code {
-      background: rgba(255,255,255,0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-    }
-
-    /* ===================== MODEL PERFORMANCE ===================== */
-    .models-layout {
-      display: grid;
-      gap: 20px;
-    }
-
-    .table-responsive {
+    /* ==========================================================================
+       TABLES
+       ========================================================================== */
+    .table-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
       overflow-x: auto;
-      border-radius: var(--radius-lg);
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12px;
+      text-align: left;
     }
 
     th {
-      background: rgba(48, 54, 61, 0.5);
-      color: var(--text-secondary);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
       padding: 10px 14px;
-      text-align: left;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
       white-space: nowrap;
-      position: relative;
+      user-select: none;
     }
 
     th.sortable {
       cursor: pointer;
-      user-select: none;
     }
 
-    th.sortable:hover { color: var(--text-primary); }
+    th.sortable:hover {
+      color: var(--text-primary);
+    }
 
-    th.sorted-asc::after { content: ' ↑'; color: var(--accent-blue); }
-    th.sorted-desc::after { content: ' ↓'; color: var(--accent-blue); }
+    th.num, td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
 
     td {
-      padding: 10px 14px;
-      border-top: 1px solid var(--border);
-      color: var(--text-primary);
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
       white-space: nowrap;
     }
 
-    tr:hover td { background: rgba(255,255,255,0.03); }
-
-    .best-value {
-      background: rgba(255, 215, 0, 0.12) !important;
-      color: var(--accent-gold) !important;
-      font-weight: 700;
-      border-radius: 4px;
-      padding: 2px 8px !important;
+    tr:last-child td {
+      border-bottom: none;
     }
 
-    /* ===================== CONFUSION MATRIX ===================== */
-    .confusion-grid {
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.015);
+      color: var(--text-primary);
+    }
+
+    .cell-highlight {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .best-indicator {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--color-emerald);
+      border-bottom: 1px dotted var(--color-emerald);
+      font-weight: 600;
+    }
+
+    /* Model Header Tags */
+    .model-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .model-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .model-dot.lr { background: var(--color-lr); }
+    .model-dot.rf { background: var(--color-rf); }
+    .model-dot.xgb { background: var(--color-xgb); }
+
+    /* ==========================================================================
+       CONFUSION MATRICES (MINIMAL 2x2)
+       ========================================================================== */
+    .confusion-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 14px;
     }
 
-    .confusion-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 18px;
+    .cm-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
     }
 
-    .confusion-card-title {
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 14px;
+    .cm-header {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      margin-bottom: 10px;
     }
 
-    .confusion-matrix {
+    .cm-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 8px;
+      gap: 6px;
     }
 
-    .cm-cell {
-      padding: 14px 10px;
-      border-radius: 8px;
+    .cm-box {
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-base);
+      border-radius: var(--radius-sm);
+      padding: 10px;
       text-align: center;
     }
 
-    .cm-cell .cm-value {
-      font-size: 22px;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    .cm-cell .cm-label {
-      font-size: 10px;
+    .cm-box-val {
+      font-family: var(--font-mono);
+      font-size: 15px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-top: 4px;
-      opacity: 0.75;
+      color: var(--text-primary);
     }
 
-    .cm-tp { background: rgba(63, 185, 80, 0.2); border: 1px solid rgba(63, 185, 80, 0.3); }
-    .cm-tp .cm-value { color: var(--accent-green); }
+    .cm-box-lbl {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
 
-    .cm-fp { background: rgba(248, 81, 73, 0.15); border: 1px solid rgba(248, 81, 73, 0.3); }
-    .cm-fp .cm-value { color: var(--accent-red); }
+    .cm-box.tp { border-color: var(--color-emerald-border); background: var(--color-emerald-bg); }
+    .cm-box.tp .cm-box-val { color: var(--color-emerald); }
 
-    .cm-fn { background: rgba(210, 153, 34, 0.15); border: 1px solid rgba(210, 153, 34, 0.3); }
-    .cm-fn .cm-value { color: var(--accent-yellow); }
+    .cm-box.fp { border-color: var(--color-rose-border); background: var(--color-rose-bg); }
+    .cm-box.fp .cm-box-val { color: var(--color-rose); }
 
-    .cm-tn { background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); }
-    .cm-tn .cm-value { color: var(--accent-blue); }
-
-    /* ===================== CHARTS ROW ===================== */
-    .charts-row {
+    /* ==========================================================================
+       CHARTS
+       ========================================================================== */
+    .charts-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 12px;
+      margin-top: 14px;
     }
 
-    @media (max-width: 900px) {
-      .charts-row { grid-template-columns: 1fr; }
-    }
-
-    .chart-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-    }
-
-    .chart-card-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
+    .chart-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
     }
 
     .chart-wrapper {
       position: relative;
-      height: 280px;
+      height: 220px;
+      width: 100%;
     }
 
-    /* ===================== LIVE TRANSACTIONS ===================== */
-    .transactions-table-wrapper {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-    }
-
-    .transactions-table-header {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .transactions-table-header .title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-    }
-
-    .record-count {
-      font-size: 12px;
-      color: var(--text-secondary);
-      background: rgba(255,255,255,0.05);
-      padding: 3px 10px;
-      border-radius: 20px;
-    }
-
-    .transactions-scroll {
-      max-height: 500px;
+    /* ==========================================================================
+       LIVE FEED TABLE
+       ========================================================================== */
+    .table-scroll {
+      max-height: 480px;
       overflow-y: auto;
     }
-
-    .tx-row-fraud td { background: rgba(248, 81, 73, 0.07) !important; }
-    .tx-row-legit td { background: rgba(63, 185, 80, 0.04) !important; }
-    .tx-row-disagree td { background: rgba(210, 153, 34, 0.08) !important; }
 
     .badge {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      font-family: var(--font-mono);
       font-size: 10px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      line-height: 1;
     }
 
-    .badge-fraud { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); border: 1px solid rgba(248, 81, 73, 0.4); }
-    .badge-ok { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); border: 1px solid rgba(63, 185, 80, 0.3); }
-    .badge-lr { color: var(--lr-color); }
-    .badge-rf { color: var(--rf-color); }
-    .badge-xgb { color: var(--xgb-color); }
-
-    .empty-state {
-      padding: 48px 20px;
-      text-align: center;
-      color: var(--text-secondary);
+    .badge-fraud {
+      background: var(--color-rose-bg);
+      color: var(--color-rose);
+      border: 1px solid var(--color-rose-border);
     }
 
-    .empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; }
-    .empty-state .empty-text { font-size: 14px; font-weight: 500; }
-    .empty-state .empty-sub { font-size: 12px; margin-top: 4px; opacity: 0.6; }
+    .badge-ok {
+      background: var(--color-emerald-bg);
+      color: var(--color-emerald);
+      border: 1px solid var(--color-emerald-border);
+    }
 
-    /* ===================== AGREEMENT SECTION ===================== */
-    .agreement-layout {
+    .row-fraud td {
+      background: rgba(244, 63, 94, 0.04);
+    }
+
+    .row-disputed td {
+      background: rgba(245, 158, 11, 0.04);
+    }
+
+    /* ==========================================================================
+       AGREEMENT SECTION
+       ========================================================================== */
+    .agreement-container {
       display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 20px;
-      align-items: start;
+      grid-template-columns: 280px 1fr;
+      gap: 12px;
     }
 
-    @media (max-width: 900px) {
-      .agreement-layout { grid-template-columns: 1fr; }
-    }
-
-    .donut-wrapper {
+    .donut-container {
       position: relative;
-      height: 280px;
+      height: 200px;
+      width: 100%;
     }
 
-    .agreement-legend {
+    .agreement-stats-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-    }
-
-    .legend-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .legend-label { flex: 1; color: var(--text-secondary); }
-    .legend-value { font-weight: 700; color: var(--text-primary); }
-
-    /* ===================== LEADERBOARD ===================== */
-    .rank-medal { font-size: 16px; }
-
-    .model-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .model-pill.lr { background: rgba(79, 123, 223, 0.15); color: var(--lr-color); border: 1px solid rgba(79, 123, 223, 0.3); }
-    .model-pill.rf { background: rgba(46, 204, 113, 0.12); color: var(--rf-color); border: 1px solid rgba(46, 204, 113, 0.3); }
-    .model-pill.xgb { background: rgba(231, 76, 60, 0.12); color: var(--xgb-color); border: 1px solid rgba(231, 76, 60, 0.3); }
-
-    .best-metric-icon { font-size: 14px; }
-
-    /* ===================== FOOTER DISCLAIMER ===================== */
-    .disclaimer {
-      margin-top: 24px;
-      padding: 14px 18px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 12px;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
       gap: 8px;
     }
 
-    /* ===================== LOADING SPINNER ===================== */
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,0.1);
-      border-top-color: var(--accent-blue);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+    .agreement-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .loading-cell {
-      text-align: center;
-      padding: 32px;
+    .agreement-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
       color: var(--text-secondary);
     }
 
-    /* ===================== RESPONSIVE ===================== */
-    @media (max-width: 768px) {
-      .navbar { padding: 0 12px; gap: 12px; }
-      .navbar-nav { display: none; }
-      .main-content { padding: 16px; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-      .charts-row { grid-template-columns: 1fr; }
-      .confusion-grid { grid-template-columns: 1fr; }
+    .agreement-color-bar {
+      width: 3px;
+      height: 12px;
+      border-radius: 1px;
+    }
+
+    .agreement-values {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* ==========================================================================
+       LEADERBOARD
+       ========================================================================== */
+    .rank-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .rank-num.first {
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    /* ==========================================================================
+       FOOTER & TOASTS
+       ========================================================================== */
+    .footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-faint);
+      font-family: var(--font-mono);
+    }
+
+    .toast-tray {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast-msg {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-default);
+      color: var(--text-primary);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      animation: fadeIn 0.2s ease;
+    }
+
+    .toast-msg.success { border-color: var(--color-emerald-border); color: var(--color-emerald); }
+    .toast-msg.error { border-color: var(--color-rose-border); color: var(--color-rose); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==========================================================================
+       RESPONSIVENESS
+       ========================================================================== */
+    @media (max-width: 1024px) {
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .services-grid { grid-template-columns: repeat(3, 1fr); }
+      .charts-grid { grid-template-columns: 1fr; }
+      .confusion-row { grid-template-columns: 1fr; }
+      .agreement-container { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .header { padding: 0 16px; }
+      .nav-tabs { display: none; }
+      .container { padding: 16px; }
+      .metrics-grid { grid-template-columns: 1fr; }
+      .services-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
 <body>
 
-<!-- ==================== TOAST CONTAINER ==================== -->
-<div class="toast-container" id="toastContainer"></div>
+  <!-- Toast Notification Container -->
+  <div class="toast-tray" id="toastContainer"></div>
 
-<!-- ==================== NAVIGATION ==================== -->
-<nav class="navbar">
-  <div class="navbar-brand">
-    <div class="shield-icon">🛡️</div>
-    <span>FraudShield</span>
-    <span class="version-badge">2.0</span>
-  </div>
-
-  <nav class="navbar-nav" role="navigation">
-    <button class="nav-link active" onclick="scrollToSection('overview')">📊 Overview</button>
-    <button class="nav-link" onclick="scrollToSection('model-performance')">🤖 Model Performance</button>
-    <button class="nav-link" onclick="scrollToSection('live-transactions')">⚡ Live Transactions</button>
-    <button class="nav-link" onclick="scrollToSection('agreement')">🔍 Agreement Analysis</button>
-    <button class="nav-link" onclick="scrollToSection('leaderboard')">🏆 Leaderboard</button>
-  </nav>
-
-  <div class="navbar-controls">
-    <div class="pipeline-status" id="pipelineStatus">
-      <div class="status-dot" id="pipelineStatusDot"></div>
-      <span id="pipelineStatusText">Checking...</span>
+  <!-- Header Navigation -->
+  <header class="header">
+    <div class="brand-group">
+      <div class="brand-mark">
+        <div class="brand-mark-inner"></div>
+      </div>
+      <div class="brand-title">
+        FraudShield
+        <span class="brand-version">v2.0</span>
+      </div>
     </div>
-    <button class="btn btn-primary" id="btnStart" onclick="startPipeline()">▶ Start</button>
-    <button class="btn btn-danger" id="btnStop" onclick="stopPipeline()">⏹ Stop</button>
-    <button class="btn btn-secondary" onclick="replayPipeline()">↺ Replay</button>
-  </div>
-</nav>
 
-<!-- ==================== MAIN CONTENT ==================== -->
-<main class="main-content">
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="navigate('overview')">Overview</button>
+      <button class="nav-tab" onclick="navigate('models')">Models</button>
+      <button class="nav-tab" onclick="navigate('feed')">Live Feed</button>
+      <button class="nav-tab" onclick="navigate('consensus')">Consensus</button>
+      <button class="nav-tab" onclick="navigate('ranking')">Leaderboard</button>
+    </nav>
 
-  <!-- ==================== SECTION B: OVERVIEW ==================== -->
-  <section class="section" id="overview">
-    <div class="section-header">
-      <div>
-        <div class="section-title">
-          <div class="section-icon" style="background: rgba(88,166,255,0.15);">📊</div>
-          Overview Dashboard
+    <div class="controls-group">
+      <div class="status-indicator" id="pipelineStatusBadge">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusLabel">Idle</span>
+      </div>
+      <button class="btn btn-primary" id="btnStart" onclick="startPipeline()">
+        <svg class="btn-icon" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3" fill="currentColor"/></svg>
+        Start
+      </button>
+      <button class="btn btn-danger" id="btnStop" onclick="stopPipeline()">
+        <svg class="btn-icon" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" fill="currentColor"/></svg>
+        Stop
+      </button>
+      <button class="btn" onclick="replayPipeline()">
+        <svg class="btn-icon" viewBox="0 0 24 24"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+        Replay
+      </button>
+    </div>
+  </header>
+
+  <!-- Main View -->
+  <main class="container">
+
+    <!-- 1. OVERVIEW & INFRASTRUCTURE -->
+    <section class="section" id="overview">
+      <div class="section-header">
+        <div class="section-title">Telemetry & Infrastructure</div>
+        <div class="section-meta">Auto-sync 5s &bull; Kafka &bull; Spark 3.5.0</div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Total Ingested</div>
+          <div class="metric-value" id="valTotal">&mdash;</div>
+          <div class="metric-sub">Processed through pipeline</div>
         </div>
-        <div class="section-subtitle">Real-time transaction metrics and system health</div>
-      </div>
-      <div class="refresh-badge"><div class="dot"></div> Auto-refresh every 5s</div>
-    </div>
-
-    <!-- Stats Cards -->
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card blue">
-        <div class="stat-icon">💳</div>
-        <div class="stat-label">Total Transactions</div>
-        <div class="stat-value blue" id="statTotal">—</div>
-        <div class="stat-meta">Processed through pipeline</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-icon">🚨</div>
-        <div class="stat-label">Fraud Detected</div>
-        <div class="stat-value red" id="statFraud">—</div>
-        <div class="stat-meta">Flagged transactions</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-icon">✅</div>
-        <div class="stat-label">Legitimate</div>
-        <div class="stat-value green" id="statLegit">—</div>
-        <div class="stat-meta">Clean transactions</div>
-      </div>
-      <div class="stat-card yellow">
-        <div class="stat-icon">📈</div>
-        <div class="stat-label">Fraud Rate</div>
-        <div class="stat-value yellow" id="statFraudRate">—</div>
-        <div class="stat-meta">% of all transactions</div>
-      </div>
-    </div>
-
-    <!-- Container Health -->
-    <div class="card">
-      <div class="card-title">Container Health</div>
-      <div class="container-health-grid" id="containerGrid">
-        <div style="color: var(--text-secondary); font-size: 13px; padding: 10px 0;">
-          <span class="spinner"></span> Loading container statuses…
+        <div class="metric-card">
+          <div class="metric-label">Fraud Flagged</div>
+          <div class="metric-value rose" id="valFraud">&mdash;</div>
+          <div class="metric-sub">Flagged suspicious</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Legitimate Clean</div>
+          <div class="metric-value emerald" id="valLegit">&mdash;</div>
+          <div class="metric-sub">Cleared transactions</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Stream Fraud Rate</div>
+          <div class="metric-value amber" id="valFraudRate">&mdash;</div>
+          <div class="metric-sub">Observed prevalence</div>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- ==================== SECTION C: MODEL PERFORMANCE ==================== -->
-  <section class="section" id="model-performance">
-    <div class="section-header">
-      <div>
-        <div class="section-title">
-          <div class="section-icon" style="background: rgba(63,185,80,0.15);">🤖</div>
-          3-Model Performance Comparison
-        </div>
-        <div class="section-subtitle">Linear Regression vs Random Forest vs XGBoost</div>
+      <div class="services-grid" id="servicesGrid">
+        <!-- Rendered by JS -->
       </div>
-    </div>
+    </section>
 
-    <div id="modelComparisonContent">
-      <div class="card" style="text-align:center; padding: 40px;">
-        <span class="spinner"></span>
-        <div style="color: var(--text-secondary); margin-top: 10px;">Loading model metrics…</div>
+    <!-- 2. MODEL BENCHMARKS & EVALUATION -->
+    <section class="section" id="models">
+      <div class="section-header">
+        <div class="section-title">Model Evaluation Matrix</div>
+        <div class="section-meta">Evaluated on 555,719 Held-Out Records (fraudTest.csv)</div>
       </div>
-    </div>
-  </section>
 
-  <!-- ==================== SECTION D: LIVE TRANSACTIONS ==================== -->
-  <section class="section" id="live-transactions">
-    <div class="section-header">
-      <div>
-        <div class="section-title">
-          <div class="section-icon" style="background: rgba(248,81,73,0.15);">⚡</div>
-          Live Transaction Monitoring
-        </div>
-        <div class="section-subtitle">Last 100 transactions from Kafka stream</div>
+      <div id="modelsContainer">
+        <!-- Populated via API -->
       </div>
-      <div class="refresh-badge"><div class="dot"></div> Auto-refresh every 5s</div>
-    </div>
+    </section>
 
-    <div class="transactions-table-wrapper">
-      <div class="transactions-table-header">
-        <span class="title">Transaction Feed</span>
-        <span class="record-count" id="txCount">0 records</span>
+    <!-- 3. REAL-TIME TRANSACTION FEED -->
+    <section class="section" id="feed">
+      <div class="section-header">
+        <div class="section-title">Live Transaction Stream</div>
+        <div class="section-meta" id="feedCountMeta">0 transactions</div>
       </div>
-      <div class="transactions-scroll">
-        <div class="table-responsive">
-          <table id="txTable">
+
+      <div class="table-container">
+        <div class="table-scroll">
+          <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Time</th>
-                <th>Amount</th>
+                <th>Transaction ID</th>
+                <th>Time (UTC)</th>
+                <th class="num">Amount</th>
                 <th>Merchant</th>
-                <th>Actual</th>
-                <th style="color: var(--lr-color);">LR</th>
-                <th style="color: var(--rf-color);">RF</th>
-                <th style="color: var(--xgb-color);">XGB</th>
+                <th>Category</th>
+                <th>Ground Truth</th>
+                <th>LR Score</th>
+                <th>RF Score</th>
+                <th>XGB Score</th>
+                <th>Decision</th>
               </tr>
             </thead>
-            <tbody id="txBody">
+            <tbody id="feedTableBody">
               <tr>
-                <td colspan="8" class="loading-cell">
-                  <span class="spinner"></span>
-                  <div style="margin-top: 8px;">Loading transaction stream…</div>
+                <td colspan="10" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                  Awaiting transactions from Kafka stream...
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ==================== SECTION E: AGREEMENT ANALYSIS ==================== -->
-  <section class="section" id="agreement">
-    <div class="section-header">
-      <div>
-        <div class="section-title">
-          <div class="section-icon" style="background: rgba(210,153,34,0.15);">🔍</div>
-          Model Agreement Analysis
-        </div>
-        <div class="section-subtitle">How often do the three models agree on fraud classification?</div>
+    <!-- 4. MODEL AGREEMENT & CONSENSUS -->
+    <section class="section" id="consensus">
+      <div class="section-header">
+        <div class="section-title">Ensemble Consensus Distribution</div>
+        <div class="section-meta">Agreement Analysis across LR, RF, XGB</div>
       </div>
-      <div class="refresh-badge"><div class="dot"></div> Auto-refresh every 5s</div>
-    </div>
 
-    <div class="agreement-layout">
-      <div class="chart-card">
-        <div class="chart-card-title">Agreement Distribution</div>
-        <div class="donut-wrapper">
-          <canvas id="agreementChart"></canvas>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Breakdown</div>
-        <div class="agreement-legend" id="agreementLegend">
-          <div style="color: var(--text-secondary); font-size: 13px;">
-            <span class="spinner"></span> Loading agreement data…
+      <div class="agreement-container">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Consensus Ring</div>
+          </div>
+          <div class="donut-container">
+            <canvas id="consensusDonutChart"></canvas>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- ==================== SECTION F: LEADERBOARD ==================== -->
-  <section class="section" id="leaderboard">
-    <div class="section-header">
-      <div>
-        <div class="section-title">
-          <div class="section-icon" style="background: rgba(255,215,0,0.15);">🏆</div>
-          Dynamic Model Leaderboard
+        <div class="agreement-stats-list" id="agreementDetailsList">
+          <!-- Populated by JS -->
         </div>
-        <div class="section-subtitle">Click any column header to sort</div>
       </div>
-    </div>
+    </section>
 
-    <div class="card" style="padding: 0; overflow: hidden;">
-      <div class="table-responsive">
-        <table id="leaderboardTable">
+    <!-- 5. LEADERBOARD -->
+    <section class="section" id="ranking">
+      <div class="section-header">
+        <div class="section-title">Model Performance Leaderboard</div>
+        <div class="section-meta">Ranked by Balanced Performance (F1 &amp; PR-AUC)</div>
+      </div>
+
+      <div class="table-container">
+        <table>
           <thead>
             <tr>
-              <th>Rank</th>
-              <th class="sortable" data-col="model" onclick="sortLeaderboard('model')">Model</th>
-              <th class="sortable" data-col="recall" onclick="sortLeaderboard('recall')">Recall</th>
-              <th class="sortable" data-col="precision" onclick="sortLeaderboard('precision')">Precision</th>
-              <th class="sortable sorted-desc" data-col="f1" onclick="sortLeaderboard('f1')">F1 Score</th>
-              <th class="sortable" data-col="pr_auc" onclick="sortLeaderboard('pr_auc')">PR-AUC</th>
-              <th class="sortable" data-col="roc_auc" onclick="sortLeaderboard('roc_auc')">ROC-AUC</th>
-              <th class="sortable" data-col="train_time" onclick="sortLeaderboard('train_time')">Train Time</th>
+              <th style="width: 60px;">Rank</th>
+              <th>Architecture</th>
+              <th class="num sortable" onclick="sortRanking('recall')">Recall</th>
+              <th class="num sortable" onclick="sortRanking('precision')">Precision</th>
+              <th class="num sortable" onclick="sortRanking('f1')">F1 Score</th>
+              <th class="num sortable" onclick="sortRanking('pr_auc')">PR-AUC</th>
+              <th class="num sortable" onclick="sortRanking('roc_auc')">ROC-AUC</th>
+              <th class="num sortable" onclick="sortRanking('train_time')">Train Time</th>
+              <th class="num sortable" onclick="sortRanking('inference_time')">Latency (555k)</th>
             </tr>
           </thead>
-          <tbody id="leaderboardBody">
-            <tr>
-              <td colspan="8" class="loading-cell">
-                <span class="spinner"></span>
-                <div style="margin-top: 8px;">Loading leaderboard…</div>
-              </td>
-            </tr>
+          <tbody id="rankingTableBody">
+            <!-- Populated by JS -->
           </tbody>
         </table>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ==================== DISCLAIMER ==================== -->
-  <div class="disclaimer">
-    <span>ℹ️</span>
-    <span>
-      <strong>Dataset Notice:</strong> All transaction data displayed in this dashboard is <strong>Sparkov-generated simulation data</strong>, not actual bank transactions. This system is for educational and research purposes only.
-    </span>
-  </div>
+    <!-- Footer Disclaimer -->
+    <footer class="footer">
+      <div>Dataset: Sparkov Transaction Simulator &bull; Kaggle Kartik2112 &bull; Educational Benchmarking</div>
+      <div>FraudShield 2.0 &bull; Apache Spark Structured Streaming</div>
+    </footer>
 
-</main>
+  </main>
 
-<!-- ==================== JAVASCRIPT ==================== -->
-<script>
-  'use strict';
+  <!-- ==========================================================================
+       DASHBOARD SCRIPT
+       ========================================================================== -->
+  <script>
+    'use strict';
 
-  // ==================== CONFIGURATION ====================
-  const API_BASE = 'http://localhost:5050';
-  const REFRESH_INTERVAL_MS = 5000;
+    const API_BASE = 'http://localhost:5050';
+    const REFRESH_RATE = 5000;
 
-  // Chart.js global defaults
-  Chart.defaults.color = '#8b949e';
-  Chart.defaults.borderColor = '#30363d';
-  Chart.defaults.font.family = "'Inter', sans-serif";
+    // Chart.js Theme Defaults (Clean & Minimal)
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+    Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+    Chart.defaults.font.size = 11;
 
-  // ==================== STATE ====================
-  let chartInstances = {};
-  let leaderboardData = [];
-  let leaderboardSortCol = 'f1';
-  let leaderboardSortAsc = false;
-  let refreshTimers = [];
+    let chartInstances = {};
+    let rankingData = [];
+    let rankingSortKey = 'f1';
+    let rankingAsc = false;
 
-  // ==================== UTILITIES ====================
-
-  function fmt(val, digits = 4) {
-    if (val === null || val === undefined || val === '' || val === 'N/A') return '—';
-    const n = parseFloat(val);
-    if (isNaN(n)) return String(val);
-    return n.toFixed(digits);
-  }
-
-  function fmtPct(val) {
-    if (val === null || val === undefined) return '—';
-    return parseFloat(val).toFixed(2) + '%';
-  }
-
-  function fmtTime(val) {
-    if (val === null || val === undefined || val === 'N/A') return '—';
-    const n = parseFloat(val);
-    if (isNaN(n)) return val;
-    if (n < 1) return (n * 1000).toFixed(1) + ' ms';
-    return n.toFixed(2) + ' s';
-  }
-
-  function fmtNum(n) {
-    if (n === null || n === undefined) return '—';
-    return Number(n).toLocaleString();
-  }
-
-  async function apiFetch(endpoint) {
-    const res = await fetch(API_BASE + endpoint);
-    if (!res.ok) {
-      const err = new Error(`HTTP ${res.status}`);
-      err.status = res.status;
-      throw err;
+    // Formatting utilities
+    function fmtVal(v, dec = 4) {
+      if (v === null || v === undefined || v === '') return '&mdash;';
+      const n = Number(v);
+      return isNaN(n) ? v : n.toFixed(dec);
     }
-    return res.json();
-  }
 
-  function destroyChart(id) {
-    if (chartInstances[id]) {
-      chartInstances[id].destroy();
-      delete chartInstances[id];
+    function fmtPct(v) {
+      if (v === null || v === undefined) return '&mdash;';
+      return (Number(v)).toFixed(2) + '%';
     }
-  }
 
-  // ==================== TOAST ====================
+    function fmtTime(v) {
+      if (v === null || v === undefined) return '&mdash;';
+      const n = Number(v);
+      if (isNaN(n)) return v;
+      return n < 1 ? (n * 1000).toFixed(0) + 'ms' : n.toFixed(2) + 's';
+    }
 
-  function showToast(message, type = 'info', duration = 4000) {
-    const container = document.getElementById('toastContainer');
-    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
-    container.appendChild(toast);
+    function fmtInt(v) {
+      if (v === null || v === undefined) return '&mdash;';
+      return Number(v).toLocaleString();
+    }
 
-    setTimeout(() => {
-      toast.style.animation = 'slideOut 0.3s ease forwards';
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
-  }
+    async function fetchAPI(endpoint) {
+      const res = await fetch(API_BASE + endpoint);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
 
-  // ==================== NAV ====================
+    function showToast(text, type = 'info') {
+      const box = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      el.className = `toast-msg ${type}`;
+      el.textContent = text;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
 
-  function scrollToSection(id) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    event?.target?.classList.add('active');
-  }
+    function navigate(id) {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      event?.target?.classList.add('active');
+    }
 
-  // Active nav on scroll
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const id = entry.target.id;
-        const sectionNavMap = {
-          overview: 0,
-          'model-performance': 1,
-          'live-transactions': 2,
-          agreement: 3,
-          leaderboard: 4
-        };
-        const links = document.querySelectorAll('.nav-link');
-        links.forEach(l => l.classList.remove('active'));
-        const idx = sectionNavMap[id];
-        if (idx !== undefined) links[idx]?.classList.add('active');
+    // Pipeline Controls
+    async function updatePipelineStatus() {
+      try {
+        const data = await fetchAPI('/api/pipeline/status');
+        const running = data.running === true || data.status === 'running';
+        const dot = document.getElementById('statusDot');
+        const label = document.getElementById('statusLabel');
+        if (running) {
+          dot.className = 'status-dot active';
+          label.textContent = 'Active';
+          label.style.color = 'var(--color-emerald)';
+        } else {
+          dot.className = 'status-dot';
+          label.textContent = 'Stopped';
+          label.style.color = 'var(--text-muted)';
+        }
+      } catch (err) {
+        document.getElementById('statusLabel').textContent = 'Offline';
       }
-    });
-  }, { threshold: 0.2 });
+    }
 
-  document.querySelectorAll('.section').forEach(s => observer.observe(s));
-
-  // ==================== PIPELINE CONTROLS ====================
-
-  async function fetchPipelineStatus() {
-    try {
-      const data = await apiFetch('/api/pipeline/status');
-      const running = data.running === true || data.status === 'running';
-      const dot = document.getElementById('pipelineStatusDot');
-      const text = document.getElementById('pipelineStatusText');
-      if (running) {
-        dot.className = 'status-dot running';
-        text.textContent = 'Running';
-      } else {
-        dot.className = 'status-dot';
-        text.textContent = 'Stopped';
+    async function startPipeline() {
+      try {
+        document.getElementById('btnStart').disabled = true;
+        await fetch(API_BASE + '/api/pipeline/start', { method: 'POST' });
+        showToast('Pipeline initiated', 'success');
+        await updatePipelineStatus();
+      } catch (err) {
+        showToast('Start failed: ' + err.message, 'error');
+      } finally {
+        document.getElementById('btnStart').disabled = false;
       }
-    } catch (e) {
-      document.getElementById('pipelineStatusText').textContent = 'Unknown';
-    }
-  }
-
-  async function startPipeline() {
-    try {
-      document.getElementById('btnStart').disabled = true;
-      const res = await fetch(API_BASE + '/api/pipeline/start', { method: 'POST' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      showToast('Pipeline started successfully!', 'success');
-      await fetchPipelineStatus();
-    } catch (e) {
-      showToast(`Failed to start pipeline: ${e.message}`, 'error');
-    } finally {
-      document.getElementById('btnStart').disabled = false;
-    }
-  }
-
-  async function stopPipeline() {
-    try {
-      document.getElementById('btnStop').disabled = true;
-      const res = await fetch(API_BASE + '/api/pipeline/stop', { method: 'POST' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      showToast('Pipeline stopped.', 'success');
-      await fetchPipelineStatus();
-    } catch (e) {
-      showToast(`Failed to stop pipeline: ${e.message}`, 'error');
-    } finally {
-      document.getElementById('btnStop').disabled = false;
-    }
-  }
-
-  async function replayPipeline() {
-    try {
-      const res = await fetch(API_BASE + '/api/pipeline/replay', { method: 'POST' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      showToast('Pipeline replay started from beginning.', 'info');
-    } catch (e) {
-      showToast(`Failed to replay pipeline: ${e.message}`, 'error');
-    }
-  }
-
-  // ==================== SECTION B: OVERVIEW ====================
-
-  async function fetchOverview() {
-    // Transactions
-    try {
-      const data = await apiFetch('/api/transactions');
-      document.getElementById('statTotal').textContent = fmtNum(data.total_seen ?? data.total ?? 0);
-      document.getElementById('statFraud').textContent = fmtNum(data.fraud_count ?? 0);
-      document.getElementById('statLegit').textContent = fmtNum(data.legit_count ?? 0);
-      const rate = data.fraud_rate ?? (data.fraud_count && data.total_seen ? (data.fraud_count / data.total_seen * 100).toFixed(2) : 0);
-      document.getElementById('statFraudRate').textContent = fmtPct(rate);
-    } catch (e) {
-      ['statTotal','statFraud','statLegit','statFraudRate'].forEach(id => {
-        document.getElementById(id).textContent = 'Error';
-      });
     }
 
-    // Containers
-    try {
-      const data = await apiFetch('/api/containers');
-      renderContainerGrid(data);
-    } catch (e) {
-      document.getElementById('containerGrid').innerHTML = `<div style="color:var(--accent-red); font-size:13px;">Failed to load container statuses: ${e.message}</div>`;
-    }
-  }
-
-  function renderContainerGrid(data) {
-    const grid = document.getElementById('containerGrid');
-    const containers = Array.isArray(data) ? data : (data.containers || Object.entries(data).map(([name, info]) => ({
-      name, status: typeof info === 'string' ? info : info.status
-    })));
-
-    if (!containers.length) {
-      grid.innerHTML = '<div style="color:var(--text-secondary); font-size:13px;">No container data available.</div>';
-      return;
+    async function stopPipeline() {
+      try {
+        document.getElementById('btnStop').disabled = true;
+        await fetch(API_BASE + '/api/pipeline/stop', { method: 'POST' });
+        showToast('Pipeline stopped', 'info');
+        await updatePipelineStatus();
+      } catch (err) {
+        showToast('Stop failed: ' + err.message, 'error');
+      } finally {
+        document.getElementById('btnStop').disabled = false;
+      }
     }
 
-    const icons = {
-      zookeeper: '🦒', kafka: '📨', 'spark-master': '⚡', 'spark-worker': '🔧',
-      'fraud-producer': '🏭', 'fraud-consumer': '🎯'
-    };
+    async function replayPipeline() {
+      try {
+        await fetch(API_BASE + '/api/pipeline/replay', { method: 'POST' });
+        showToast('Stream replay triggered from record 0', 'info');
+      } catch (err) {
+        showToast('Replay failed: ' + err.message, 'error');
+      }
+    }
 
-    grid.innerHTML = containers.map(c => {
-      const name = c.name || c.service || 'Unknown';
-      const statusRaw = (c.status || 'unknown').toLowerCase();
-      const isUp = statusRaw.includes('up') || statusRaw === 'running' || statusRaw === 'healthy';
-      const icon = icons[name] || '🐳';
-      return `
-        <div class="container-card">
-          <div class="container-status-dot ${isUp ? 'up' : 'down'}"></div>
-          <div class="container-info">
-            <div class="container-name">${icon} ${name}</div>
-            <div class="container-status-text ${isUp ? 'up' : 'down'}">${isUp ? 'Up' : 'Stopped'}</div>
-          </div>
-        </div>`;
-    }).join('');
-  }
+    // 1. Overview Telemetry
+    async function updateOverview() {
+      try {
+        const data = await fetchAPI('/api/transactions');
+        document.getElementById('valTotal').textContent = fmtInt(data.total_seen ?? 0);
+        document.getElementById('valFraud').textContent = fmtInt(data.fraud_count ?? 0);
+        document.getElementById('valLegit').textContent = fmtInt(data.legit_count ?? 0);
+        const rate = data.fraud_rate ?? (data.total_seen ? (data.fraud_count / data.total_seen * 100) : 0);
+        document.getElementById('valFraudRate').textContent = fmtPct(rate);
+      } catch (err) {
+        // Fallback gracefully
+      }
 
-  // ==================== SECTION C: MODEL PERFORMANCE ====================
+      try {
+        const containers = await fetchAPI('/api/containers');
+        renderServices(containers);
+      } catch (err) {
+        // Fallback
+      }
+    }
 
-  async function fetchModelComparison() {
-    const container = document.getElementById('modelComparisonContent');
+    function renderServices(containers) {
+      const grid = document.getElementById('servicesGrid');
+      const list = Array.isArray(containers) ? containers : (containers.containers || []);
+      if (!list.length) return;
 
-    try {
-      const data = await apiFetch('/api/models/comparison');
-      renderModelComparison(data);
-    } catch (e) {
-      if (e.status === 404) {
-        container.innerHTML = `
-          <div class="alert-banner warning">
-            <span>⚠️</span>
-            <div>
-              <strong>Model comparison not available yet.</strong><br/>
-              Run: <code>python training/train_models.py && python training/evaluate_models.py</code>
+      grid.innerHTML = list.map(c => {
+        const name = c.name || c.service || 'service';
+        const rawStat = (c.status || '').toLowerCase();
+        const isUp = c.running === true || rawStat.includes('up');
+        return `
+          <div class="service-card">
+            <div class="service-top">
+              <span class="service-name">${name}</span>
+              <span class="service-dot ${isUp ? 'online' : ''}"></span>
             </div>
+            <span class="service-status-text">${isUp ? 'Operational' : 'Halted'}</span>
           </div>`;
-      } else {
+      }).join('');
+    }
+
+    // 2. Model Performance Evaluation
+    async function updateModels() {
+      const container = document.getElementById('modelsContainer');
+      try {
+        const comp = await fetchAPI('/api/models/comparison');
+        renderModelComparison(comp);
+      } catch (err) {
         container.innerHTML = `
-          <div class="alert-banner warning">
-            <span>⚠️</span>
-            <div>Failed to load model metrics: ${e.message}. Ensure the backend is running at <code>${API_BASE}</code>.</div>
+          <div class="panel" style="color: var(--text-muted); font-family: var(--font-mono); font-size: 12px;">
+            Awaiting model benchmarks. Ensure models are trained and evaluate_models.py has completed.
           </div>`;
       }
     }
-  }
 
-  function renderModelComparison(data) {
-    const container = document.getElementById('modelComparisonContent');
+    function renderModelComparison(data) {
+      const container = document.getElementById('modelsContainer');
+      const lr = data.linear_regression || {};
+      const rf = data.random_forest || {};
+      const xgb = data.xgboost || {};
 
-    // Normalize data structure
-    const models = {
-      lr: data.linear_regression || data.lr || data['Linear Regression'] || {},
-      rf: data.random_forest || data.rf || data['Random Forest'] || {},
-      xgb: data.xgboost || data.xgb || data['XGBoost'] || {}
-    };
+      const metrics = [
+        { label: 'ROC-AUC', key: 'roc_auc', high: true, fmt: v => fmtVal(v, 4) },
+        { label: 'PR-AUC', key: 'pr_auc', high: true, fmt: v => fmtVal(v, 4) },
+        { label: 'Accuracy', key: 'accuracy', high: true, fmt: v => fmtPct(v * 100) },
+        { label: 'Precision', key: 'precision', high: true, fmt: v => fmtPct(v * 100) },
+        { label: 'Recall (Catch Rate)', key: 'recall', high: true, fmt: v => fmtPct(v * 100) },
+        { label: 'F1 Score', key: 'f1_score', high: true, fmt: v => fmtVal(v, 4) },
+        { label: 'False Positive Rate', key: 'false_positive_rate', high: false, fmt: v => fmtPct(v * 100) },
+        { label: 'Training Latency', key: 'training_time', high: false, fmt: v => fmtTime(v) },
+        { label: 'Inference Latency (555k)', key: 'inference_time', high: false, fmt: v => fmtTime(v) },
+      ];
 
-    const metricRows = [
-      { key: 'accuracy',       label: 'Accuracy',       higherBetter: true,  fmt: v => fmt(v, 4) },
-      { key: 'precision',      label: 'Precision',      higherBetter: true,  fmt: v => fmt(v, 4) },
-      { key: 'recall',         label: 'Recall',         higherBetter: true,  fmt: v => fmt(v, 4) },
-      { key: 'f1',             label: 'F1 Score',       higherBetter: true,  fmt: v => fmt(v, 4) },
-      { key: 'roc_auc',        label: 'ROC-AUC',        higherBetter: true,  fmt: v => fmt(v, 4) },
-      { key: 'pr_auc',         label: 'PR-AUC',         higherBetter: true,  fmt: v => fmt(v, 4) },
-      { key: 'train_time',     label: 'Training Time',  higherBetter: false, fmt: v => fmtTime(v) },
-      { key: 'inference_time', label: 'Inference Time', higherBetter: false, fmt: v => fmtTime(v) },
-    ];
+      function findBest(key, high) {
+        const vals = [lr[key], rf[key], xgb[key]].map(Number).filter(v => !isNaN(v));
+        return vals.length ? (high ? Math.max(...vals) : Math.min(...vals)) : null;
+      }
 
-    function getVal(model, key) {
-      const m = models[model];
-      return m[key] ?? m[key.replace('_', '')] ?? null;
-    }
+      let tableRows = metrics.map(m => {
+        const best = findBest(m.key, m.high);
+        function renderCell(val) {
+          const num = Number(val);
+          const isBest = best !== null && !isNaN(num) && Math.abs(num - best) < 0.00001;
+          const formatted = m.fmt(val);
+          return isBest ? `<span class="best-indicator">${formatted}</span>` : formatted;
+        }
 
-    // Build comparison table HTML
-    let tableHTML = `
-      <div class="card" style="padding:0; overflow:hidden; margin-bottom: 20px;">
-        <div class="table-responsive">
+        return `
+          <tr>
+            <td style="font-weight:500; color:var(--text-primary);">${m.label}</td>
+            <td class="num">${renderCell(lr[m.key])}</td>
+            <td class="num">${renderCell(rf[m.key])}</td>
+            <td class="num">${renderCell(xgb[m.key])}</td>
+          </tr>`;
+      }).join('');
+
+      let html = `
+        <div class="table-container">
           <table>
             <thead>
               <tr>
-                <th>Metric</th>
-                <th style="color: var(--lr-color);">Linear Regression</th>
-                <th style="color: var(--rf-color);">Random Forest</th>
-                <th style="color: var(--xgb-color);">XGBoost</th>
+                <th>Evaluation Metric</th>
+                <th class="num"><div class="model-tag" style="justify-content:flex-end;"><span class="model-dot lr"></span>Linear Regression (Baseline)</div></th>
+                <th class="num"><div class="model-tag" style="justify-content:flex-end;"><span class="model-dot rf"></span>Random Forest (100 Trees)</div></th>
+                <th class="num"><div class="model-tag" style="justify-content:flex-end;"><span class="model-dot xgb"></span>XGBoost (Champion)</div></th>
               </tr>
             </thead>
-            <tbody>`;
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>`;
 
-    metricRows.forEach(row => {
-      const vals = { lr: getVal('lr', row.key), rf: getVal('rf', row.key), xgb: getVal('xgb', row.key) };
-      const nums = Object.values(vals).map(v => parseFloat(v)).filter(v => !isNaN(v));
-      const best = nums.length ? (row.higherBetter ? Math.max(...nums) : Math.min(...nums)) : null;
-
-      function cellClass(v) {
-        const n = parseFloat(v);
-        return (!isNaN(n) && best !== null && Math.abs(n - best) < 0.000001) ? 'best-value' : '';
+      // 2x2 Confusion Matrices
+      function renderCM(title, tagClass, m) {
+        const cm = m.confusion_matrix || {};
+        return `
+          <div class="cm-panel">
+            <div class="cm-header">
+              <div class="model-tag"><span class="model-dot ${tagClass}"></span>${title}</div>
+            </div>
+            <div class="cm-grid">
+              <div class="cm-box">
+                <div class="cm-box-val">${fmtInt(cm.true_negative ?? cm.tn ?? 0)}</div>
+                <div class="cm-box-lbl">True Negative</div>
+              </div>
+              <div class="cm-box fp">
+                <div class="cm-box-val">${fmtInt(cm.false_positive ?? cm.fp ?? 0)}</div>
+                <div class="cm-box-lbl">False Positive</div>
+              </div>
+              <div class="cm-box">
+                <div class="cm-box-val">${fmtInt(cm.false_negative ?? cm.fn ?? 0)}</div>
+                <div class="cm-box-lbl">False Negative</div>
+              </div>
+              <div class="cm-box tp">
+                <div class="cm-box-val">${fmtInt(cm.true_positive ?? cm.tp ?? 0)}</div>
+                <div class="cm-box-lbl">True Positive</div>
+              </div>
+            </div>
+          </div>`;
       }
 
-      tableHTML += `<tr>
-        <td style="font-weight:600; color:var(--text-secondary);">${row.label}</td>
-        <td class="${cellClass(vals.lr)}">${row.fmt(vals.lr)}</td>
-        <td class="${cellClass(vals.rf)}">${row.fmt(vals.rf)}</td>
-        <td class="${cellClass(vals.xgb)}">${row.fmt(vals.xgb)}</td>
-      </tr>`;
-    });
+      html += `
+        <div class="confusion-row">
+          ${renderCM('Linear Regression', 'lr', lr)}
+          ${renderCM('Random Forest', 'rf', rf)}
+          ${renderCM('XGBoost', 'xgb', xgb)}
+        </div>`;
 
-    tableHTML += `</tbody></table></div></div>`;
-
-    // Charts
-    const chartsHTML = `
-      <div class="charts-row" style="margin-bottom: 20px;">
-        <div class="chart-card">
-          <div class="chart-card-title">Model Metric Comparison (Accuracy, Precision, Recall, F1)</div>
-          <div class="chart-wrapper"><canvas id="barComparisonChart"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-card-title">Training Time vs Inference Time</div>
-          <div class="chart-wrapper"><canvas id="timeComparisonChart"></canvas></div>
-        </div>
-      </div>`;
-
-    // Confusion matrices
-    function buildCM(modelKey, modelLabel, colorVar) {
-      const m = models[modelKey];
-      const cm = m.confusion_matrix || {};
-      const tp = cm.tp ?? cm.TP ?? m.tp ?? '—';
-      const fp = cm.fp ?? cm.FP ?? m.fp ?? '—';
-      const fn = cm.fn ?? cm.FN ?? m.fn ?? '—';
-      const tn = cm.tn ?? cm.TN ?? m.tn ?? '—';
-
-      return `
-        <div class="confusion-card">
-          <div class="confusion-card-title">
-            <span style="width:10px;height:10px;border-radius:50%;background:${colorVar};display:inline-block;"></span>
-            ${modelLabel}
+      // Charts Row
+      html += `
+        <div class="charts-grid">
+          <div class="chart-box">
+            <div class="panel-header"><div class="panel-title">PR-AUC &amp; F1 Comparison</div></div>
+            <div class="chart-wrapper"><canvas id="metricComparisonBar"></canvas></div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:11px; color:var(--text-secondary); text-align:center; margin-bottom:4px;">
-            <div>Predicted Legit</div><div>Predicted Fraud</div>
-          </div>
-          <div class="confusion-matrix">
-            <div class="cm-cell cm-tn">
-              <div class="cm-value">${fmtNum(tn)}</div>
-              <div class="cm-label">TN</div>
-            </div>
-            <div class="cm-cell cm-fp">
-              <div class="cm-value">${fmtNum(fp)}</div>
-              <div class="cm-label">FP</div>
-            </div>
-            <div class="cm-cell cm-fn">
-              <div class="cm-value">${fmtNum(fn)}</div>
-              <div class="cm-label">FN</div>
-            </div>
-            <div class="cm-cell cm-tp">
-              <div class="cm-value">${fmtNum(tp)}</div>
-              <div class="cm-label">TP</div>
-            </div>
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:11px; color:var(--text-secondary); text-align:center; margin-top:4px;">
-            <div>Actual Legit</div><div>Actual Fraud</div>
+          <div class="chart-box">
+            <div class="panel-header"><div class="panel-title">Inference &amp; Training Latencies</div></div>
+            <div class="chart-wrapper"><canvas id="latencyComparisonBar"></canvas></div>
           </div>
         </div>`;
-    }
 
-    const cmHTML = `
-      <div class="confusion-grid" style="margin-bottom: 20px;">
-        ${buildCM('lr',  'Linear Regression', 'var(--lr-color)')}
-        ${buildCM('rf',  'Random Forest',      'var(--rf-color)')}
-        ${buildCM('xgb', 'XGBoost',            'var(--xgb-color)')}
-      </div>`;
+      container.innerHTML = html;
 
-    container.innerHTML = tableHTML + chartsHTML + cmHTML;
-
-    // Draw bar comparison chart
-    const barMetrics = ['accuracy', 'precision', 'recall', 'f1'];
-    const barLabels = ['Accuracy', 'Precision', 'Recall', 'F1 Score'];
-    destroyChart('barComparison');
-    const barCtx = document.getElementById('barComparisonChart').getContext('2d');
-    chartInstances['barComparison'] = new Chart(barCtx, {
-      type: 'bar',
-      data: {
-        labels: barLabels,
-        datasets: [
-          {
-            label: 'Linear Regression',
-            data: barMetrics.map(k => parseFloat(getVal('lr', k)) || 0),
-            backgroundColor: 'rgba(79, 123, 223, 0.7)',
-            borderColor: '#4f7bdf',
-            borderWidth: 1,
-            borderRadius: 4,
-          },
-          {
-            label: 'Random Forest',
-            data: barMetrics.map(k => parseFloat(getVal('rf', k)) || 0),
-            backgroundColor: 'rgba(46, 204, 113, 0.7)',
-            borderColor: '#2ecc71',
-            borderWidth: 1,
-            borderRadius: 4,
-          },
-          {
-            label: 'XGBoost',
-            data: barMetrics.map(k => parseFloat(getVal('xgb', k)) || 0),
-            backgroundColor: 'rgba(231, 76, 60, 0.7)',
-            borderColor: '#e74c3c',
-            borderWidth: 1,
-            borderRadius: 4,
-          },
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top', labels: { usePointStyle: true, padding: 16 } },
-          tooltip: { mode: 'index', intersect: false },
+      // Draw Chart 1: Key Metrics
+      if (chartInstances['metricBar']) chartInstances['metricBar'].destroy();
+      const ctx1 = document.getElementById('metricComparisonBar').getContext('2d');
+      chartInstances['metricBar'] = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: ['Precision', 'Recall', 'F1 Score', 'PR-AUC', 'ROC-AUC'],
+          datasets: [
+            {
+              label: 'Linear Regression',
+              data: [lr.precision, lr.recall, lr.f1_score, lr.pr_auc, lr.roc_auc],
+              backgroundColor: 'rgba(96, 165, 250, 0.65)',
+              borderColor: '#60a5fa',
+              borderWidth: 1,
+              borderRadius: 3
+            },
+            {
+              label: 'Random Forest',
+              data: [rf.precision, rf.recall, rf.f1_score, rf.pr_auc, rf.roc_auc],
+              backgroundColor: 'rgba(52, 211, 153, 0.65)',
+              borderColor: '#34d399',
+              borderWidth: 1,
+              borderRadius: 3
+            },
+            {
+              label: 'XGBoost',
+              data: [xgb.precision, xgb.recall, xgb.f1_score, xgb.pr_auc, xgb.roc_auc],
+              backgroundColor: 'rgba(248, 113, 113, 0.65)',
+              borderColor: '#f87171',
+              borderWidth: 1,
+              borderRadius: 3
+            }
+          ]
         },
-        scales: {
-          y: {
-            beginAtZero: false,
-            min: 0,
-            max: 1,
-            grid: { color: '#30363d' },
-            ticks: { callback: v => (v * 100).toFixed(0) + '%' }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 8, padding: 12 } }
           },
-          x: { grid: { display: false } }
-        }
-      }
-    });
-
-    // Draw time comparison chart
-    destroyChart('timeComparison');
-    const timeCtx = document.getElementById('timeComparisonChart').getContext('2d');
-    chartInstances['timeComparison'] = new Chart(timeCtx, {
-      type: 'bar',
-      data: {
-        labels: ['Linear Regression', 'Random Forest', 'XGBoost'],
-        datasets: [
-          {
-            label: 'Training Time (s)',
-            data: ['lr','rf','xgb'].map(k => parseFloat(getVal(k, 'train_time')) || 0),
-            backgroundColor: ['rgba(79,123,223,0.7)', 'rgba(46,204,113,0.7)', 'rgba(231,76,60,0.7)'],
-            borderColor: ['#4f7bdf','#2ecc71','#e74c3c'],
-            borderWidth: 1,
-            borderRadius: 4,
-          },
-          {
-            label: 'Inference Time (s)',
-            data: ['lr','rf','xgb'].map(k => parseFloat(getVal(k, 'inference_time')) || 0),
-            backgroundColor: ['rgba(79,123,223,0.3)', 'rgba(46,204,113,0.3)', 'rgba(231,76,60,0.3)'],
-            borderColor: ['#4f7bdf','#2ecc71','#e74c3c'],
-            borderWidth: 1,
-            borderRadius: 4,
-            borderDash: [4,4],
+          scales: {
+            y: { min: 0, max: 1, ticks: { callback: v => (v * 100).toFixed(0) + '%' } },
+            x: { grid: { display: false } }
           }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top', labels: { usePointStyle: true, padding: 16 } },
-          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(3)}s` } }
-        },
-        scales: {
-          y: { beginAtZero: true, grid: { color: '#30363d' } },
-          x: { grid: { display: false } }
         }
+      });
+
+      // Draw Chart 2: Latencies
+      if (chartInstances['latencyBar']) chartInstances['latencyBar'].destroy();
+      const ctx2 = document.getElementById('latencyComparisonBar').getContext('2d');
+      chartInstances['latencyBar'] = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: ['Linear Regression', 'Random Forest', 'XGBoost'],
+          datasets: [
+            {
+              label: 'Training Time (s)',
+              data: [lr.training_time, rf.training_time, xgb.training_time],
+              backgroundColor: 'rgba(148, 163, 184, 0.35)',
+              borderColor: '#94a3b8',
+              borderWidth: 1,
+              borderRadius: 3
+            },
+            {
+              label: 'Inference Time (s)',
+              data: [lr.inference_time, rf.inference_time, xgb.inference_time],
+              backgroundColor: 'rgba(56, 189, 248, 0.55)',
+              borderColor: '#38bdf8',
+              borderWidth: 1,
+              borderRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 8, padding: 12 } }
+          },
+          scales: {
+            y: { beginAtZero: true },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+
+      // Update Leaderboard Data
+      rankingData = [
+        { id: 'xgb', name: 'XGBoost Classifier', ...xgb },
+        { id: 'rf', name: 'Random Forest Classifier', ...rf },
+        { id: 'lr', name: 'Linear Regression (Baseline)', ...lr },
+      ];
+      renderRanking();
+    }
+
+    // 3. Live Transaction Stream
+    async function updateFeed() {
+      try {
+        const data = await fetchAPI('/api/predictions/live');
+        const list = data.records || [];
+        document.getElementById('feedCountMeta').textContent = `${list.length} recent events (Parquet sink)`;
+
+        const tbody = document.getElementById('feedTableBody');
+        if (!list.length) return;
+
+        tbody.innerHTML = list.slice(0, 50).map(tx => {
+          const actualFraud = tx.actual_is_fraud === 1;
+          const lrP = Number(tx.lr_prediction);
+          const rfP = Number(tx.rf_prediction);
+          const xgbP = Number(tx.xgb_prediction);
+
+          const isDisputed = (lrP + rfP + xgbP === 1) || (lrP + rfP + xgbP === 2);
+          let rowClass = actualFraud ? 'row-fraud' : (isDisputed ? 'row-disputed' : '');
+
+          function formatBadge(pred) {
+            return pred === 1
+              ? `<span class="badge badge-fraud">FRAUD</span>`
+              : `<span class="badge badge-ok">CLEAN</span>`;
+          }
+
+          const shortId = String(tx.transaction_id || '').slice(0, 10);
+          const time = tx.timestamp ? tx.timestamp.split(' ')[1] || tx.timestamp : '&mdash;';
+          const amt = tx.amount !== undefined ? `\$${Number(tx.amount).toFixed(2)}` : '&mdash;';
+
+          return `
+            <tr class="${rowClass}">
+              <td style="font-family:var(--font-mono); font-size:11px; color:var(--text-primary);">${shortId}</td>
+              <td style="font-family:var(--font-mono); font-size:11px;">${time}</td>
+              <td class="num" style="font-family:var(--font-mono); font-weight:600; color:var(--text-primary);">${amt}</td>
+              <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis;">${tx.merchant || '&mdash;'}</td>
+              <td style="color:var(--text-muted);">${tx.category || '&mdash;'}</td>
+              <td>${formatBadge(actualFraud ? 1 : 0)}</td>
+              <td style="font-family:var(--font-mono); font-size:11px;">${fmtVal(tx.lr_score, 3)}</td>
+              <td style="font-family:var(--font-mono); font-size:11px;">${fmtVal(tx.rf_score, 3)}</td>
+              <td style="font-family:var(--font-mono); font-size:11px;">${fmtVal(tx.xgb_score, 3)}</td>
+              <td>${formatBadge(xgbP)}</td>
+            </tr>`;
+        }).join('');
+      } catch (err) {
+        // Fallback gracefully
       }
-    });
-
-    // Update leaderboard data
-    leaderboardData = [
-      { model: 'lr',  label: 'Linear Regression', ...extractMetrics(models.lr)  },
-      { model: 'rf',  label: 'Random Forest',      ...extractMetrics(models.rf)  },
-      { model: 'xgb', label: 'XGBoost',            ...extractMetrics(models.xgb) },
-    ];
-    renderLeaderboard();
-  }
-
-  function extractMetrics(m) {
-    return {
-      accuracy:       parseFloat(m.accuracy)       || null,
-      precision:      parseFloat(m.precision)      || null,
-      recall:         parseFloat(m.recall)         || null,
-      f1:             parseFloat(m.f1)             || null,
-      roc_auc:        parseFloat(m.roc_auc)        || null,
-      pr_auc:         parseFloat(m.pr_auc)         || null,
-      train_time:     parseFloat(m.train_time)     || null,
-      inference_time: parseFloat(m.inference_time) || null,
-    };
-  }
-
-  // ==================== SECTION D: LIVE TRANSACTIONS ====================
-
-  async function fetchLiveTransactions() {
-    try {
-      const data = await apiFetch('/api/predictions/live');
-      const records = data.records || data.transactions || data.predictions || (Array.isArray(data) ? data : []);
-      renderTransactions(records);
-    } catch (e) {
-      document.getElementById('txBody').innerHTML = `
-        <tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">
-          Failed to load transactions: ${e.message}
-        </td></tr>`;
-      document.getElementById('txCount').textContent = 'Error';
-    }
-  }
-
-  function renderTransactions(records) {
-    const tbody = document.getElementById('txBody');
-    const countEl = document.getElementById('txCount');
-    countEl.textContent = `${records.length} record${records.length !== 1 ? 's' : ''}`;
-
-    if (!records.length) {
-      tbody.innerHTML = `
-        <tr><td colspan="8">
-          <div class="empty-state">
-            <div class="empty-icon">📡</div>
-            <div class="empty-text">Waiting for Kafka stream to begin...</div>
-            <div class="empty-sub">No transactions received yet. Start the pipeline to begin streaming.</div>
-          </div>
-        </td></tr>`;
-      return;
     }
 
-    tbody.innerHTML = records.slice(0, 100).map(tx => {
-      const isActualFraud = tx.actual_is_fraud === 1 || tx.actual_is_fraud === true || tx.is_fraud === 1;
-      const lrPred  = tx.lr_prediction  ?? tx.lr  ?? tx['Linear Regression'] ?? null;
-      const rfPred  = tx.rf_prediction  ?? tx.rf  ?? tx['Random Forest']     ?? null;
-      const xgbPred = tx.xgb_prediction ?? tx.xgb ?? tx['XGBoost']          ?? null;
+    // 4. Model Agreement Consensus
+    async function updateAgreement() {
+      try {
+        const data = await fetchAPI('/api/model-agreement');
+        const agreeFraud = Number(data.all_agree_fraud ?? 0);
+        const agreeLegit = Number(data.all_agree_legit ?? 0);
+        const oneFraud   = Number(data.one_model_fraud ?? 0);
+        const twoFraud   = Number(data.two_model_fraud ?? 0);
 
-      const agreement = tx.agreement || '';
-      const modelsDisagree = agreement === 'one_fraud' || agreement === 'two_fraud' ||
-        (lrPred !== null && rfPred !== null && xgbPred !== null &&
-         !(lrPred === rfPred && rfPred === xgbPred));
+        const total = agreeFraud + agreeLegit + oneFraud + twoFraud;
 
-      let rowClass = isActualFraud ? 'tx-row-fraud' : 'tx-row-legit';
-      if (modelsDisagree) rowClass = 'tx-row-disagree';
+        const labels = ['Unanimous Legit', 'Unanimous Fraud', 'Split: 2 Models Flagged', 'Split: 1 Model Flagged'];
+        const values = [agreeLegit, agreeFraud, twoFraud, oneFraud];
+        const colors = ['#10b981', '#f43f5e', '#f59e0b', '#38bdf8'];
 
-      function predBadge(val) {
-        if (val === null || val === undefined) return '<span style="color:var(--text-secondary);">—</span>';
-        const isFraud = val === 1 || val === true || val === '1';
-        return isFraud
-          ? '<span class="badge badge-fraud">FRAUD</span>'
-          : '<span class="badge badge-ok">OK</span>';
-      }
-
-      const actualBadge = isActualFraud
-        ? '<span class="badge badge-fraud">FRAUD</span>'
-        : '<span class="badge badge-ok">OK</span>';
-
-      const time = tx.timestamp || tx.time || tx.created_at || '';
-      const timeStr = time ? new Date(time).toLocaleTimeString() : '—';
-      const amount = tx.amount ? `\$${parseFloat(tx.amount).toFixed(2)}` : '—';
-      const merchant = tx.merchant || tx.merchant_name || '—';
-      const shortId = String(tx.transaction_id || tx.id || tx.trans_num || '—').slice(0, 12);
-
-      return `<tr class="${rowClass}">
-        <td style="font-family:monospace; font-size:11px; color:var(--text-secondary);">${shortId}</td>
-        <td style="font-size:12px;">${timeStr}</td>
-        <td style="font-weight:600;">${amount}</td>
-        <td style="max-width:120px; overflow:hidden; text-overflow:ellipsis; font-size:12px;">${merchant}</td>
-        <td>${actualBadge}</td>
-        <td>${predBadge(lrPred)}</td>
-        <td>${predBadge(rfPred)}</td>
-        <td>${predBadge(xgbPred)}</td>
-      </tr>`;
-    }).join('');
-  }
-
-  // ==================== SECTION E: AGREEMENT ====================
-
-  let agreementChartInstance = null;
-
-  async function fetchAgreement() {
-    try {
-      const data = await apiFetch('/api/model-agreement');
-      renderAgreement(data);
-    } catch (e) {
-      document.getElementById('agreementLegend').innerHTML =
-        `<div style="color:var(--accent-red); font-size:13px;">Failed to load agreement data: ${e.message}</div>`;
-    }
-  }
-
-  function renderAgreement(data) {
-    const allFraud   = data.all_fraud   ?? data.all_agree_fraud   ?? data['All 3 Agree Fraud']   ?? 0;
-    const allLegit   = data.all_legit   ?? data.all_agree_legit   ?? data['All 3 Agree Legit']   ?? 0;
-    const oneFlag    = data.one_fraud   ?? data.one_flagged        ?? data['1 Model Flagged']      ?? 0;
-    const twoFlag    = data.two_fraud   ?? data.two_flagged        ?? data['2 Models Flagged']     ?? 0;
-
-    const labels = ['All 3 Agree: Fraud', 'All 3 Agree: Legit', 'Only 1 Flagged', 'Exactly 2 Flagged'];
-    const values = [allFraud, allLegit, oneFlag, twoFlag];
-    const colors = ['#f85149', '#3fb950', '#d29922', '#58a6ff'];
-    const total  = values.reduce((a, b) => a + b, 0);
-
-    if (agreementChartInstance) { agreementChartInstance.destroy(); }
-
-    const ctx = document.getElementById('agreementChart').getContext('2d');
-    agreementChartInstance = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          backgroundColor: colors.map(c => c + 'cc'),
-          borderColor: colors,
-          borderWidth: 2,
-          hoverOffset: 8,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '65%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                const pct = total ? ((ctx.raw / total) * 100).toFixed(1) : 0;
-                return ` ${ctx.label}: ${fmtNum(ctx.raw)} (${pct}%)`;
-              }
+        if (chartInstances['consensusDonut']) chartInstances['consensusDonut'].destroy();
+        const ctx = document.getElementById('consensusDonutChart').getContext('2d');
+        chartInstances['consensusDonut'] = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels,
+            datasets: [{
+              data: values,
+              backgroundColor: colors,
+              borderColor: '#11131a',
+              borderWidth: 2,
+              hoverOffset: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            plugins: {
+              legend: { display: false }
             }
           }
-        }
+        });
+
+        // Detail list
+        const listEl = document.getElementById('agreementDetailsList');
+        listEl.innerHTML = labels.map((lbl, i) => {
+          const count = values[i];
+          const pct = total ? ((count / total) * 100).toFixed(1) : '0.0';
+          return `
+            <div class="agreement-row">
+              <div class="agreement-name">
+                <div class="agreement-color-bar" style="background:${colors[i]};"></div>
+                ${lbl}
+              </div>
+              <div class="agreement-values">
+                ${fmtInt(count)} <span style="color:var(--text-muted); font-size:11px;">(${pct}%)</span>
+              </div>
+            </div>`;
+        }).join('');
+
+      } catch (err) {
+        // Fallback
       }
-    });
-
-    const legendEl = document.getElementById('agreementLegend');
-    legendEl.innerHTML = labels.map((label, i) => {
-      const pct = total ? ((values[i] / total) * 100).toFixed(1) : '0.0';
-      return `
-        <div class="legend-item">
-          <div class="legend-dot" style="background:${colors[i]};"></div>
-          <div class="legend-label">${label}</div>
-          <div class="legend-value">${fmtNum(values[i])} <span style="color:var(--text-secondary); font-weight:400; font-size:11px;">(${pct}%)</span></div>
-        </div>`;
-    }).join('');
-  }
-
-  // ==================== SECTION F: LEADERBOARD ====================
-
-  function sortLeaderboard(col) {
-    if (leaderboardSortCol === col) {
-      leaderboardSortAsc = !leaderboardSortAsc;
-    } else {
-      leaderboardSortCol = col;
-      leaderboardSortAsc = col === 'model' ? true : false;
     }
 
-    // Update header styles
-    document.querySelectorAll('#leaderboardTable th.sortable').forEach(th => {
-      th.classList.remove('sorted-asc', 'sorted-desc');
-      if (th.dataset.col === col) {
-        th.classList.add(leaderboardSortAsc ? 'sorted-asc' : 'sorted-desc');
+    // 5. Leaderboard Ranking
+    function sortRanking(key) {
+      if (rankingSortKey === key) {
+        rankingAsc = !rankingAsc;
+      } else {
+        rankingSortKey = key;
+        rankingAsc = key === 'train_time' || key === 'inference_time';
       }
-    });
-
-    renderLeaderboard();
-  }
-
-  function renderLeaderboard() {
-    const tbody = document.getElementById('leaderboardBody');
-    if (!leaderboardData.length) {
-      tbody.innerHTML = `
-        <tr><td colspan="8" class="loading-cell">
-          <div class="empty-state">
-            <div class="empty-icon">🏆</div>
-            <div class="empty-text">No model data available</div>
-            <div class="empty-sub">Run model training to see the leaderboard.</div>
-          </div>
-        </td></tr>`;
-      return;
+      renderRanking();
     }
 
-    const sorted = [...leaderboardData].sort((a, b) => {
-      let va = a[leaderboardSortCol], vb = b[leaderboardSortCol];
-      if (typeof va === 'string') va = va.toLowerCase();
-      if (typeof vb === 'string') vb = vb.toLowerCase();
-      if (va === null) return 1;
-      if (vb === null) return -1;
-      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
-      return leaderboardSortAsc ? cmp : -cmp;
-    });
+    function renderRanking() {
+      const tbody = document.getElementById('rankingTableBody');
+      if (!rankingData.length) return;
 
-    // Find best per metric
-    const metricKeys = ['recall', 'precision', 'f1', 'pr_auc', 'roc_auc'];
-    const best = {};
-    metricKeys.forEach(k => {
-      const vals = leaderboardData.map(d => d[k]).filter(v => v !== null);
-      best[k] = vals.length ? Math.max(...vals) : null;
-    });
-    // For train_time, best = minimum
-    const trainTimes = leaderboardData.map(d => d.train_time).filter(v => v !== null);
-    best.train_time = trainTimes.length ? Math.min(...trainTimes) : null;
+      const sorted = [...rankingData].sort((a, b) => {
+        let va = Number(a[rankingSortKey] ?? 0);
+        let vb = Number(b[rankingSortKey] ?? 0);
+        return rankingAsc ? va - vb : vb - va;
+      });
 
-    const modelClass = { lr: 'lr', rf: 'rf', xgb: 'xgb' };
-    const medals = ['🥇', '🥈', '🥉'];
+      tbody.innerHTML = sorted.map((row, idx) => {
+        const isLeader = idx === 0 && rankingSortKey === 'f1' && !rankingAsc;
+        const tagClass = row.id === 'xgb' ? 'xgb' : (row.id === 'rf' ? 'rf' : 'lr');
 
-    tbody.innerHTML = sorted.map((row, idx) => {
-      function bestIcon(key, val, isLower = false) {
-        if (val === null) return '';
-        const b = best[key];
-        const isBest = b !== null && Math.abs(val - b) < 0.0001;
-        return isBest ? ' <span class="best-metric-icon">🥇</span>' : '';
-      }
+        return `
+          <tr>
+            <td><span class="rank-num ${idx === 0 ? 'first' : ''}">#0${idx + 1}</span></td>
+            <td>
+              <div class="model-tag">
+                <span class="model-dot ${tagClass}"></span>
+                <span class="${isLeader ? 'cell-highlight' : ''}">${row.name}</span>
+              </div>
+            </td>
+            <td class="num">${fmtPct((row.recall ?? 0) * 100)}</td>
+            <td class="num">${fmtPct((row.precision ?? 0) * 100)}</td>
+            <td class="num cell-highlight">${fmtVal(row.f1_score ?? 0, 4)}</td>
+            <td class="num">${fmtVal(row.pr_auc ?? 0, 4)}</td>
+            <td class="num">${fmtVal(row.roc_auc ?? 0, 4)}</td>
+            <td class="num">${fmtTime(row.training_time ?? 0)}</td>
+            <td class="num">${fmtTime(row.inference_time ?? 0)}</td>
+          </tr>`;
+      }).join('');
+    }
 
-      return `<tr>
-        <td><span class="rank-medal">${medals[idx] || (idx + 1)}</span></td>
-        <td><span class="model-pill ${modelClass[row.model]}">${row.label}</span></td>
-        <td>${row.recall   !== null ? (row.recall   * 100).toFixed(2) + '%' : '—'}${bestIcon('recall',    row.recall)}</td>
-        <td>${row.precision !== null ? (row.precision * 100).toFixed(2) + '%' : '—'}${bestIcon('precision', row.precision)}</td>
-        <td style="font-weight:700;">${row.f1 !== null ? (row.f1 * 100).toFixed(2) + '%' : '—'}${bestIcon('f1', row.f1)}</td>
-        <td>${row.pr_auc  !== null ? fmt(row.pr_auc,  4) : '—'}${bestIcon('pr_auc',  row.pr_auc)}</td>
-        <td>${row.roc_auc !== null ? fmt(row.roc_auc, 4) : '—'}${bestIcon('roc_auc', row.roc_auc)}</td>
-        <td>${row.train_time !== null ? fmtTime(row.train_time) : '—'}${bestIcon('train_time', row.train_time, true)}</td>
-      </tr>`;
-    }).join('');
-  }
+    // Lifecycle Loop
+    async function refreshLoop() {
+      await Promise.allSettled([
+        updatePipelineStatus(),
+        updateOverview(),
+        updateFeed(),
+        updateAgreement(),
+      ]);
+    }
 
-  // ==================== AUTO REFRESH ====================
+    async function initDashboard() {
+      await updatePipelineStatus();
+      await updateOverview();
+      await updateModels();
+      await updateFeed();
+      await updateAgreement();
+      setInterval(refreshLoop, REFRESH_RATE);
+    }
 
-  async function refreshLiveSections() {
-    await Promise.allSettled([
-      fetchOverview(),
-      fetchLiveTransactions(),
-      fetchAgreement(),
-      fetchPipelineStatus(),
-    ]);
-  }
-
-  async function initDashboard() {
-    // Initial parallel loads
-    await Promise.allSettled([
-      fetchPipelineStatus(),
-      fetchOverview(),
-      fetchModelComparison(),
-      fetchLiveTransactions(),
-      fetchAgreement(),
-    ]);
-
-    // Setup periodic refresh for live sections
-    setInterval(refreshLiveSections, REFRESH_INTERVAL_MS);
-  }
-
-  // ==================== BOOT ====================
-  document.addEventListener('DOMContentLoaded', initDashboard);
-</script>
+    document.addEventListener('DOMContentLoaded', initDashboard);
+  </script>
 </body>
 </html>
