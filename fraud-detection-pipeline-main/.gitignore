@@ -12,6 +12,7 @@ __pycache__/
 output/
 checkpoints/
 *.parquet
+!models/**/*.parquet
 
 # Docker
 *.log

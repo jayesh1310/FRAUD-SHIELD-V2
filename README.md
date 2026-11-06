@@ -219,13 +219,14 @@ The dashboard provides real-time visibility into transactions, multi-model conse
 ### Prerequisites
 - **Docker Desktop** (with Docker Compose v2)
 - **Python 3.11 or 3.12**
+- **Dashboard Python packages**: Flask, Flask-CORS, pandas, and PyArrow (`dashboard/requirements.txt`)
 - **Apache Spark 3.5.0** (or let Docker handle Spark container execution)
 - **Hadoop Winutils** (only if training natively on Windows: `C:\hadoop\bin\winutils.exe`)
 
 ### Step 1: Clone Repository & Place Data Files
 ```bash
-git clone https://github.com/jayesh1310/Fraud-Detection.git
-cd Fraud-Detection
+git clone https://github.com/jayesh1310/FraudShield-2.0.git
+cd FraudShield-2.0
 ```
 Download `fraudTrain.csv` and `fraudTest.csv` from [Kaggle Kartik2112 Fraud Detection](https://www.kaggle.com/datasets/kartik2112/fraud-detection) and place them in the project root:
 ```text
@@ -236,16 +237,50 @@ Fraud-Detection/
   dashboard/
 ```
 
-### Step 2: (Optional) Re-train Machine Learning Models
-Pre-trained models and comparison metrics are already provided in `models/` and `results/`. To re-train all three models from scratch on `fraudTrain.csv`:
+### Step 2: Check the model files
+
+The streaming consumer needs the fitted preprocessor and all three trained models under `fraud-detection-pipeline-main/models/`. Spark model Parquet files are included in the repository, and the comparison metrics are in `results/model_comparison.json`.
+
+To train and evaluate the models using `fraudTrain.csv` and `fraudTest.csv`:
 ```powershell
 cd fraud-detection-pipeline-main
 python training/train_models.py
 python training/evaluate_models.py
+cd ..
+```
+Native training requires the training dependencies and a working local Spark/Java setup. The model training and evaluation steps can take substantial time.
+
+### Step 3: Install dashboard dependencies
+
+From the project root, install the dashboard requirements into the Python environment you intend to use:
+
+```powershell
+python -m pip install -r dashboard/requirements.txt
 ```
 
-### Step 3: Build & Start the Streaming Pipeline
-From `fraud-detection-pipeline-main/`:
+### Step 4: Start on Windows
+
+From the project root, run:
+
+```powershell
+.\start_project.bat
+```
+
+The script checks `fraudTest.csv` and the dashboard dependencies, starts Docker Desktop if needed, starts the six Compose services and the Flask dashboard, opens the browser, and follows the consumer logs. The first Docker startup can take longer while images are built or downloaded. Press **Ctrl+C** to stop following the logs; the services keep running.
+
+**Starting from scratch:** the launcher deletes the `consumer_v2` streaming checkpoint, so the consumer does not resume its previous checkpoint. It also forcibly stops processes using port 5050. Existing prediction files are not deleted by the launcher. Use the manual commands below if you need to preserve the checkpoint or a process on that port.
+
+To stop the project, run this in another PowerShell window from the project root:
+
+```powershell
+.\stop_project.bat
+```
+
+The stop script brings down Compose services and attempts to terminate processes using the project's listed ports, including 5050, 9092, 4040, 8080, 8081, and 7077. Check for unrelated applications using those ports before running it.
+
+### Manual startup
+
+To start without resetting the streaming checkpoint, from `fraud-detection-pipeline-main/`:
 ```powershell
 docker compose up -d --build
 ```
@@ -254,24 +289,23 @@ Verify all 6 services are running:
 docker compose ps
 ```
 
-### Step 4: Start the Dashboard Backend
-From `dashboard/`:
+In a separate terminal, from `dashboard/`:
 ```powershell
 python app.py
 ```
 
-### Step 5: Open Dashboard & Monitor
+### Open Dashboard & Monitor
 Open **[http://localhost:5050](http://localhost:5050)** in your browser.
 
 - **Spark Master UI**: [http://localhost:8080](http://localhost:8080)
 - **Spark Worker UI**: [http://localhost:8081](http://localhost:8081)
 - **Spark Streaming Jobs UI**: [http://localhost:4040](http://localhost:4040)
 
-To stop the entire pipeline at any time:
+To stop the Compose services from `fraud-detection-pipeline-main/`:
 ```powershell
 docker compose down
 ```
-Or click the **Stop Pipeline** button directly on the dashboard.
+Stop the separately launched dashboard with **Ctrl+C** in its terminal. The dashboard's **Stop Pipeline** button stops the Compose pipeline.
 
 ---
 
@@ -281,9 +315,12 @@ Or click the **Stop Pipeline** button directly on the dashboard.
 Fraud-Detection/
 ├── .gitignore                                      # Excludes large CSVs, Parquet storage, checkpoints, .crc files
 ├── README.md                                       # Comprehensive system documentation & evaluation report
+├── start_project.bat                               # Windows launcher for Docker services and dashboard
+├── stop_project.bat                                # Windows stop script
 ├── dashboard/
 │   ├── app.py                                      # Flask REST API backend, log poller & pipeline controller
-│   └── index.html                                  # Modern dark financial analytics UI (Chart.js)
+│   ├── index.html                                  # Modern dark financial analytics UI (Chart.js)
+│   └── requirements.txt                            # Dashboard Python dependencies
 └── fraud-detection-pipeline-main/
     ├── docker-compose.yml                          # 6-service Docker orchestration
     ├── consumer/
