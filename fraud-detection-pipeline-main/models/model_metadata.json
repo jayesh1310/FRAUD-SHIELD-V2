@@ -1,0 +1,34 @@
+{
+  "lr_threshold": 0.1,
+  "xgb_threshold": 0.6,
+  "feature_count": 85,
+  "train_rows": 1296675,
+  "train_fraud_rows": 7506,
+  "train_legit_rows": 1289169,
+  "scale_pos_weight": 171.75179856115108,
+  "lr_training_time": 25.09,
+  "rf_training_time": 488.09,
+  "xgb_training_time": 794.01,
+  "numeric_features": [
+    "transaction_amount",
+    "log_transaction_amount",
+    "transaction_hour",
+    "transaction_day",
+    "transaction_month",
+    "transaction_day_of_week",
+    "is_night_transaction",
+    "is_weekend",
+    "cardholder_latitude",
+    "cardholder_longitude",
+    "merchant_latitude",
+    "merchant_longitude",
+    "home_to_merchant_distance",
+    "customer_age",
+    "log_city_pop"
+  ],
+  "categorical_features": [
+    "category",
+    "gender",
+    "state"
+  ]
+}

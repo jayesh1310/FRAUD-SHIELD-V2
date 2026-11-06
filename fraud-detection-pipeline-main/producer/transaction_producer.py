@@ -1,166 +1,131 @@
 """
 transaction_producer.py
 -----------------------
-Streams credit-card transactions to an Apache Kafka topic in real time.
+FraudShield 2.0 — Kafka Producer (Historical Replay Mode).
 
-Supports TWO modes:
-1. Real Dataset Mode:
-   If `fraudTest.csv` (or path specified by CSV_FILE_PATH or --file) exists,
-   reads transactions line-by-line from the CSV, maps to standard schema,
-   and publishes to Kafka at a configurable rate (e.g. 10 to 50 tx/s).
-   Loops continuously when reaching EOF.
+Reads actual test transactions from fraudTest.csv (Sparkov-generated simulation data)
+and publishes them to the 'transactions' Kafka topic.
 
-2. Synthetic Mode (Fallback):
-   Generates synthetic credit-card transaction events using Faker.
+The ground-truth label (actual_is_fraud) is included in the Kafka message as a
+separate field for downstream evaluation — it is NEVER passed to any ML model
+as an input feature.
+
+Faker is NOT used. All data comes from the Kaggle dataset.
+
+Environment variables:
+  KAFKA_BOOTSTRAP_SERVERS  (default: kafka:29092)
+  KAFKA_TOPIC              (default: transactions)
+  TRANSACTIONS_PER_SECOND  (default: 25)
+  CSV_FILE_PATH            (default: /app/fraudTest.csv)
 """
 
-import argparse
 import csv
 import json
 import os
-import random
 import sys
 import time
-import uuid
 from datetime import datetime, timezone
-
-try:
-    from faker import Faker
-    fake = Faker()
-except ImportError:
-    fake = None
 
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
-# ---------------------------------------------------------------------------
-# Configuration (overridden via CLI or environment variables)
-# ---------------------------------------------------------------------------
+# ── Configuration ─────────────────────────────────────────────────────────────
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:29092")
 KAFKA_TOPIC             = os.getenv("KAFKA_TOPIC", "transactions")
-TRANSACTIONS_PER_SECOND = int(os.getenv("TRANSACTIONS_PER_SECOND", "20"))
-FRAUD_PROBABILITY       = float(os.getenv("FRAUD_PROBABILITY", "0.02"))
-CSV_FILE_PATH           = os.getenv("CSV_FILE_PATH", "")
-
-CATEGORY_MAP = {
-    "food_dining": "food",
-    "grocery_pos": "food",
-    "grocery_net": "food",
-    "entertainment": "entertainment",
-    "travel": "travel",
-    "gas_transport": "travel",
-    "shopping_pos": "retail",
-    "shopping_net": "retail",
-    "misc_pos": "retail",
-    "misc_net": "retail",
-    "home": "retail",
-    "kids_pets": "retail",
-    "personal_care": "healthcare",
-    "health_fitness": "healthcare",
-}
+TRANSACTIONS_PER_SECOND = int(os.getenv("TRANSACTIONS_PER_SECOND", "25"))
+CSV_FILE_PATH           = os.getenv("CSV_FILE_PATH", "/app/fraudTest.csv")
 
 
-def find_csv_file(custom_path: str = "") -> str:
-    """Locate real CSV dataset across common project directories."""
+def find_csv(custom: str = "") -> str:
+    """Locate fraudTest.csv across common paths."""
     candidates = [
-        custom_path,
+        custom,
         CSV_FILE_PATH,
         "fraudTest.csv",
         os.path.join("..", "fraudTest.csv"),
-        os.path.join("..", "..", "fraudTest.csv"),
         os.path.join(os.path.dirname(__file__), "..", "..", "fraudTest.csv"),
         "/app/fraudTest.csv",
         "/data/fraudTest.csv",
     ]
     for c in candidates:
-        if c and os.path.exists(c) and os.path.isfile(c):
+        if c and os.path.isfile(c):
             return os.path.abspath(c)
     return ""
 
 
-def csv_row_to_transaction(row: dict) -> dict:
-    """Transform a CSV row from fraudTest.csv into the exact TRANSACTION_SCHEMA."""
-    raw_cat = str(row.get("category", "retail")).strip().lower()
-    norm_cat = CATEGORY_MAP.get(raw_cat, raw_cat)
+def csv_row_to_message(row: dict) -> dict:
+    """
+    Convert a raw fraudTest.csv row to the new flat Kafka message schema.
 
-    raw_ts = str(row.get("trans_date_trans_time", "")).strip()
-    if raw_ts:
-        ts = raw_ts.replace(" ", "T")
-    else:
-        ts = datetime.now(timezone.utc).isoformat()
+    The 'actual_is_fraud' field carries the ground-truth label.
+    It must NEVER be used as an ML model input feature — only for
+    post-prediction accuracy evaluation.
+    """
+    def safe_float(val, default=0.0):
+        try:
+            return float(val) if val and val.strip() else default
+        except (ValueError, TypeError):
+            return default
 
-    try:
-        amount = round(float(row.get("amt", 0.0)), 2)
-    except (ValueError, TypeError):
-        amount = 0.0
-
-    try:
-        lat = float(row.get("lat", 0.0))
-    except (ValueError, TypeError):
-        lat = 0.0
-    try:
-        lon = float(row.get("long", 0.0))
-    except (ValueError, TypeError):
-        lon = 0.0
+    def safe_int(val, default=0):
+        try:
+            return int(float(val)) if val and str(val).strip() else default
+        except (ValueError, TypeError):
+            return default
 
     raw_fraud = str(row.get("is_fraud", "0")).strip().lower()
-    is_fraud = raw_fraud in ("1", "true", "yes")
+    is_fraud  = 1 if raw_fraud in ("1", "true", "yes") else 0
 
-    tx_id = str(row.get("trans_num") or row.get("transaction_id") or str(uuid.uuid4()))
-    cc_num = str(row.get("cc_num", "")).strip()
-    first = str(row.get("first", "")).strip()
-    last = str(row.get("last", "")).strip()
-    user_id = f"user_{cc_num}" if cc_num else f"{first}_{last}"
+    tx_id = str(row.get("trans_num") or row.get("Unnamed: 0", "")).strip()
+    if not tx_id:
+        import uuid
+        tx_id = str(uuid.uuid4())
+
+    ts_raw = str(row.get("trans_date_trans_time", "")).strip()
+    if not ts_raw:
+        ts_raw = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     return {
-        "transaction_id": tx_id,
-        "timestamp": ts,
-        "user_id": user_id,
-        "card_number": cc_num,
-        "merchant": str(row.get("merchant", "")).strip(),
-        "merchant_category": norm_cat,
-        "amount": amount,
-        "currency": "USD",
-        "location": {
-            "city": str(row.get("city", "")).strip(),
-            "country": "US",
-            "lat": lat,
-            "lon": lon,
-        },
-        "is_fraud": is_fraud,
-    }
+        # Identifiers (not used as ML features)
+        "transaction_id":        tx_id,
+        "cc_num":                str(row.get("cc_num", "")).strip(),
+        "trans_num":             str(row.get("trans_num", tx_id)).strip(),
 
+        # Temporal
+        "trans_date_trans_time": ts_raw,
+        "unix_time":             safe_int(row.get("unix_time", 0)),
 
-def generate_synthetic_transaction(is_fraud: bool = False) -> dict:
-    """Return a single synthetic transaction record (fallback mode)."""
-    if fake is None:
-        raise RuntimeError("Faker is not installed. Please install faker or provide a CSV dataset.")
-    amount = round(random.uniform(5_000, 25_000), 2) if is_fraud else round(random.uniform(1, 2_000), 2)
-    return {
-        "transaction_id": str(uuid.uuid4()),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "user_id": fake.uuid4(),
-        "card_number": fake.credit_card_number(),
-        "merchant": fake.company(),
-        "merchant_category": random.choice(
-            ["retail", "food", "travel", "entertainment", "electronics", "healthcare"]
-        ),
-        "amount": amount,
-        "currency": "USD",
-        "location": {
-            "city": fake.city(),
-            "country": fake.country_code(),
-            "lat": float(fake.latitude()),
-            "lon": float(fake.longitude()),
-        },
-        "is_fraud": is_fraud,
+        # Transaction
+        "merchant":              str(row.get("merchant", "")).strip(),
+        "category":              str(row.get("category", "misc_net")).strip().lower(),
+        "amt":                   safe_float(row.get("amt", 0.0)),
+
+        # Cardholder info (names excluded — PII, not needed for ML)
+        "first":                 str(row.get("first", "")).strip(),
+        "last":                  str(row.get("last", "")).strip(),
+        "gender":                str(row.get("gender", "M")).strip().upper(),
+        "dob":                   str(row.get("dob", "1980-01-01")).strip(),
+
+        # Location
+        "city":                  str(row.get("city", "")).strip(),
+        "state":                 str(row.get("state", "XX")).strip().upper(),
+        "zip":                   str(row.get("zip", "")).strip(),
+        "city_pop":              safe_int(row.get("city_pop", 0)),
+        "lat":                   safe_float(row.get("lat", 0.0)),
+        "long":                  safe_float(row.get("long", 0.0)),
+
+        # Merchant location
+        "merch_lat":             safe_float(row.get("merch_lat", 0.0)),
+        "merch_long":            safe_float(row.get("merch_long", 0.0)),
+
+        # Ground-truth label — stored separately, NEVER used as ML input feature
+        "actual_is_fraud":       is_fraud,
     }
 
 
 def create_producer(bootstrap_servers: str) -> KafkaProducer:
-    """Create and return a configured KafkaProducer with connection retry."""
-    print(f"[Producer] Connecting to Kafka at {bootstrap_servers}...")
-    for attempt in range(1, 11):
+    print(f"[Producer] Connecting to Kafka at {bootstrap_servers} …")
+    for attempt in range(1, 16):
         try:
             p = KafkaProducer(
                 bootstrap_servers=[bootstrap_servers],
@@ -169,91 +134,72 @@ def create_producer(bootstrap_servers: str) -> KafkaProducer:
                 retries=5,
                 linger_ms=5,
             )
-            print("[Producer] Connected to Kafka successfully.")
+            print("[Producer] Connected to Kafka.")
             return p
         except (KafkaError, Exception) as e:
-            print(f"[Producer] Kafka not ready yet (attempt {attempt}/10: {e}). Retrying in 2s...")
-            time.sleep(2)
-
-    print(f"[Producer] Failed to connect to Kafka at {bootstrap_servers}.", file=sys.stderr)
+            wait = min(attempt * 2, 15)
+            print(f"[Producer] Not ready (attempt {attempt}/15: {e}). Retrying in {wait}s …")
+            time.sleep(wait)
+    print("[Producer] Failed to connect to Kafka.", file=sys.stderr)
     sys.exit(1)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Credit Card Transaction Kafka Producer")
-    parser.add_argument("--file", "-f", default="", help="Path to real CSV dataset")
-    parser.add_argument("--rate", "-r", type=int, default=TRANSACTIONS_PER_SECOND, help="Transactions per second")
-    parser.add_argument("--servers", "-b", default=KAFKA_BOOTSTRAP_SERVERS, help="Kafka bootstrap servers")
-    parser.add_argument("--topic", "-t", default=KAFKA_TOPIC, help="Kafka topic name")
-    args, _ = parser.parse_known_args()
+    csv_file = find_csv()
+    if not csv_file:
+        print("[Producer] ERROR: fraudTest.csv not found. Mount it at /app/fraudTest.csv", file=sys.stderr)
+        sys.exit(1)
 
-    producer = create_producer(args.servers)
-    tx_rate = max(1, args.rate)
-    delay = 1.0 / tx_rate
+    producer  = create_producer(KAFKA_BOOTSTRAP_SERVERS)
+    tx_rate   = max(1, TRANSACTIONS_PER_SECOND)
+    delay     = 1.0 / tx_rate
 
-    # Check for real CSV dataset
-    csv_file = find_csv_file(args.file)
+    print("=" * 70)
+    print("  FRAUDSHIELD 2.0 — HISTORICAL REPLAY PRODUCER")
+    print(f"  Source : {csv_file}")
+    print(f"  Topic  : {KAFKA_TOPIC}")
+    print(f"  Rate   : {tx_rate} tx/s")
+    print("  Mode   : Real dataset replay (Sparkov-generated simulation data)")
+    print("=" * 70)
 
-    if csv_file:
-        print("=" * 70)
-        print("  STREAMING MODE: REAL DATASET")
-        print(f"  Source file : {csv_file}")
-        print(f"  Target topic: {args.topic}")
-        print(f"  Rate        : {tx_rate} tx/s")
-        print("=" * 70)
+    total_sent  = 0
+    fraud_sent  = 0
+    pass_num    = 1
 
-        total_sent = 0
-        fraud_sent = 0
-        pass_num = 1
+    try:
+        while True:
+            with open(csv_file, mode="r", encoding="utf-8", errors="replace") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    t0  = time.time()
+                    msg = csv_row_to_message(row)
+                    producer.send(KAFKA_TOPIC, value=msg)
+                    total_sent += 1
+                    if msg["actual_is_fraud"]:
+                        fraud_sent += 1
 
-        try:
-            while True:
-                with open(csv_file, mode="r", encoding="utf-8", errors="replace") as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        t0 = time.time()
-                        txn = csv_row_to_transaction(row)
-                        producer.send(args.topic, value=txn)
-                        total_sent += 1
-                        if txn["is_fraud"]:
-                            fraud_sent += 1
+                    label = "FRAUD" if msg["actual_is_fraud"] else "legit"
+                    # Keep log format compatible with dashboard parser
+                    print(
+                        f"[Producer] Sent [{label}] transaction {msg['transaction_id']} "
+                        f"\u2014 ${msg['amt']:.2f}",
+                        flush=True,
+                    )
 
-                        label = "FRAUD" if txn["is_fraud"] else "legit"
-                        print(f"[Producer] Sent [{label}] transaction {txn['transaction_id']} \u2014 ${txn['amount']:.2f}", flush=True)
+                    elapsed = time.time() - t0
+                    sleep_t = delay - elapsed
+                    if sleep_t > 0:
+                        time.sleep(sleep_t)
 
-                        elapsed = time.time() - t0
-                        remaining = delay - elapsed
-                        if remaining > 0:
-                            time.sleep(remaining)
+            pass_num += 1
+            print(f"[Producer] EOF reached. Looping (pass #{pass_num}). "
+                  f"Sent {total_sent:,} total, {fraud_sent:,} fraud.", flush=True)
 
-                pass_num += 1
-                print(f"[Producer] Reached EOF. Looping to beginning (pass #{pass_num})...", flush=True)
-        except KeyboardInterrupt:
-            print("\n[Producer] Shutting down...")
-        finally:
-            producer.flush()
-            producer.close()
-    else:
-        print("=" * 70)
-        print("  STREAMING MODE: SYNTHETIC (FAKER)")
-        print(f"  Target topic: {args.topic}")
-        print(f"  Rate        : {tx_rate} tx/s")
-        print(f"  Fraud prob  : {FRAUD_PROBABILITY * 100:.1f}%")
-        print("=" * 70)
-
-        try:
-            while True:
-                is_fraud = random.random() < FRAUD_PROBABILITY
-                txn = generate_synthetic_transaction(is_fraud=is_fraud)
-                producer.send(args.topic, value=txn)
-                label = "FRAUD" if is_fraud else "legit"
-                print(f"[Producer] Sent [{label}] transaction {txn['transaction_id']} \u2014 ${txn['amount']:.2f}", flush=True)
-                time.sleep(delay)
-        except KeyboardInterrupt:
-            print("\n[Producer] Shutting down...")
-        finally:
-            producer.flush()
-            producer.close()
+    except KeyboardInterrupt:
+        print(f"\n[Producer] Shutting down. Sent {total_sent:,} transactions ({fraud_sent:,} fraud).")
+    finally:
+        producer.flush()
+        producer.close()
 
 
 if __name__ == "__main__":

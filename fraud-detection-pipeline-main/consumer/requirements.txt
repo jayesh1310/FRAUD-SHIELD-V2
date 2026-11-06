@@ -1,3 +1,6 @@
 pyspark
 kafka-python
 pandas
+xgboost
+scikit-learn
+numpy

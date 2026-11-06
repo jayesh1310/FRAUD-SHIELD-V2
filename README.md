@@ -1,371 +1,319 @@
-# Real-Time Financial Fraud Detection System
+# FraudShield 2.0: Real-Time Big Data Financial Fraud Detection System
 
-An end-to-end **Big Data machine learning pipeline** for detecting fraudulent credit card transactions in real-time. The system generates a live stream of synthetic transactions via **Apache Kafka**, processes them with **Apache Spark Structured Streaming**, scores each transaction through a **Random Forest ML model**, and surfaces results through a live monitoring **dashboard**.
+[![Apache Spark](https://img.shields.io/badge/Apache%20Spark-3.5.0-orange.svg?logo=apachespark)](https://spark.apache.org/)
+[![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-7.5.0-black.svg?logo=apachekafka)](https://kafka.apache.org/)
+[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue.svg?logo=python)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.0-green.svg?logo=flask)](https://flask.palletsprojects.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg?logo=docker)](https://www.docker.com/)
+[![XGBoost](https://img.shields.io/badge/XGBoost-2.1-red.svg)](https://xgboost.readthedocs.io/)
 
-> Fully containerized with **Docker Compose** — one command to launch the entire distributed pipeline.
+FraudShield 2.0 is an enterprise-grade, end-to-end Big Data machine learning pipeline designed to detect fraudulent credit card transactions in real time. Built upon **Apache Kafka**, **Apache Spark 3.5.0 Structured Streaming**, and **Apache Parquet**, FraudShield 2.0 runs real-time parallel inference across three distinct machine learning models (**Linear Regression Baseline Scorer**, **PySpark Random Forest Classifier**, and **XGBoost Classifier**) against a continuous historical transaction replay stream.
 
----
-
-## Architecture Overview
-
-```
-┌─────────────────────────┐
-│  Synthetic Data Producer │  (Python + Faker)
-│    100 transactions/sec  │
-└───────────┬─────────────┘
-            │ JSON over Kafka
-            ▼
-┌─────────────────────────┐
-│     Apache Kafka Broker  │  (Topic: transactions)
-│   + Zookeeper Coordinator│
-└───────────┬─────────────┘
-            │ Structured Streaming
-            ▼
-┌─────────────────────────────────────────┐
-│       Spark ML Consumer (PySpark)        │
-│                                          │
-│  ┌─────────────┐   ┌──────────────────┐ │
-│  │   Feature    │──▶│  Random Forest   │ │
-│  │ Engineering  │   │  ML Pipeline     │ │
-│  └─────────────┘   └───────┬──────────┘ │
-│                             │ prediction │
-└─────────────────────────────┼────────────┘
-                              ▼
-                   ┌─────────────────────┐
-                   │  Parquet Storage     │
-                   │  (Flagged Fraud)     │
-                   └──────────┬──────────┘
-                              │
-                              ▼
-                   ┌─────────────────────┐
-                   │  FraudShield        │
-                   │  Dashboard (Flask)  │
-                   │  Port 5050          │
-                   └─────────────────────┘
-```
+> **Dataset Disclaimer**: The underlying dataset originates from [Kaggle Kartik2112 Fraud Detection](https://www.kaggle.com/datasets/kartik2112/fraud-detection), generated via the **Sparkov Data Generation tool**. It realistically simulates human purchasing habits, merchant locations, and fraud attack patterns across 1.85 million transactions. It is **simulated transaction data**, not actual bank-collected customer records.
 
 ---
 
-## Key Features
+## 1. System Architecture
 
-- **Live Streaming Pipeline** — Kafka-backed stream processing with 3-second micro-batch intervals
-- **Custom Synthetic Data** — Faker-generated transactions with configurable fraud rate (default 2%)
-- **PySpark ML Pipeline** — 6-stage pipeline (StringIndexer → OneHotEncoder → VectorAssembler → StandardScaler → RandomForest)
-- **Class Imbalance Handling** — Weighted loss function (no SMOTE), runs natively in Spark's distributed memory
-- **Real-Time Dashboard** — Live KPI cards, Chart.js visualizations, Docker container controls, and caught-fraud tables
-- **Fault Tolerant** — Checkpoint-based recovery ensures the consumer resumes exactly where it left off
-- **Fully Containerized** — 6 Docker services orchestrated via Docker Compose
+```mermaid
+flowchart TD
+    subgraph Data Layer
+        A["fraudTrain.csv (1,296,675 rows)"] --> B["PySpark Ingestion & Preprocessing"]
+        B --> C["data/processed/ (Parquet + Snappy)"]
+    end
 
----
+    subgraph Offline Model Training
+        C --> D["Feature Engineering (18 features)"]
+        D --> E["Shared Preprocessing Pipeline (StringIndexer + OHE + VectorAssembler + StandardScaler)"]
+        E --> F1["Model 1: Spark MLlib Linear Regression (Baseline Scorer)"]
+        E --> F2["Model 2: Spark MLlib Random Forest (100 Trees, Depth 10)"]
+        E --> F3["Model 3: XGBoost (scale_pos_weight=171.8)"]
+        F1 & F2 & F3 --> G["Model Validation & Threshold Tuning (F1 / Youden's J)"]
+        G --> H["models/ (Saved Preprocessor & Model Artifacts)"]
+    end
 
-## Model Performance
+    subgraph Model Evaluation & Comparison
+        I["fraudTest.csv (555,719 rows, Held-out)"] --> J["Evaluation Engine (evaluate_models.py)"]
+        H --> J
+        J --> K["results/model_comparison.json"]
+    end
 
-Evaluated on an 80/20 stratified train/test split (~44,000 test transactions):
+    subgraph Real-Time Streaming Pipeline
+        I --> L["Kafka Historical Replay Producer (fraud-producer)"]
+        L -- "JSON Transaction Stream (25 tx/s)" --> M["Kafka Broker (Topic: transactions)"]
+        M --> N["PySpark Structured Streaming Consumer (fraud-consumer)"]
+        H --> N
+        N -- "Parallel 3-Model Inference per Micro-Batch" --> O["Apache Parquet Storage (combined_predictions/)"]
+    end
 
-| Metric             | Score      |
-|--------------------|------------|
-| **AUC-ROC**        | 0.9821     |
-| **AUC-PR**         | 0.7634     |
-| **F1 Score**       | 0.9412     |
-| **Fraud Catch Rate** (Recall) | 87.43%     |
-| **False Alarm Rate** | 0.0023%    |
-
-**Confusion Matrix:**
-
-|                    | Predicted: Legit | Predicted: Fraud |
-|--------------------|:----------------:|:----------------:|
-| **Actual: Legit**  | 43,150 (TN)      | 1 (FP)           |
-| **Actual: Fraud**  | 114 (FN)          | 793 (TP)         |
-
----
-
-## Project Structure
-
-```
-fraud-detection/
-├── fraud-detection-pipeline-main/       # Core Docker pipeline
-│   ├── docker-compose.yml               # Orchestrates all 6 services
-│   ├── producer/
-│   │   ├── Dockerfile
-│   │   ├── requirements.txt             # kafka-python, faker
-│   │   └── transaction_producer.py      # Synthetic transaction generator → Kafka
-│   ├── consumer/
-│   │   ├── Dockerfile
-│   │   ├── requirements.txt             # pyspark, kafka-python, py4j
-│   │   └── spark_consumer_ml.py         # Spark Streaming consumer + ML inference
-│   ├── features/
-│   │   └── feature_engineering.py       # Feature engineering (used inside container)
-│   ├── storage/                         # Mounted volume for Parquet output
-│   ├── check_env.py                     # Environment validation script
-│   ├── run_demo.ps1                     # PowerShell demo launcher
-│   ├── set_java_env.ps1                 # Java environment setup
-│   ├── SCHEMA.md                        # Transaction schema documentation
-│   └── README.md                        # Pipeline-specific README
-│
-├── dashboard/
-│   ├── app.py                           # Flask backend (port 5050) — REST API & log polling
-│   └── index.html                       # FraudShield UI — Chart.js, live feed, KPI cards
-│
-├── feature_engineering.py               # PySpark feature engineering module (root copy)
-├── train_model_pipeline.py              # PySpark script to train the Random Forest pipeline
-├── fraud_rf_model/                      # Exported PySpark PipelineModel (used by consumer)
-│
-├── training_data/                       # Raw training data (Parquet snapshots)
-├── training_data_clean.parquet          # Cleaned training dataset
-├── train_features.parquet               # Engineered training features
-├── test_features.parquet                # Engineered test features
-│
-├── temp_flagged/                        # Local copy of fraud-flagged Parquet output
-├── temp_flagged_dash/                   # Dashboard's copy of fraud-flagged output
-│
-├── launch_jupyter.bat                   # Windows batch script to launch Jupyter Notebook
-└── .gitignore
+    subgraph Live Monitoring & Intelligence
+        O & K --> P["Flask REST API Backend (Port 5050)"]
+        P --> Q["FraudShield 2.0 Dashboard (Chart.js / Dark Theme)"]
+    end
 ```
 
 ---
 
-## Tech Stack
+## 2. Six-Service Docker Architecture
 
-| Layer              | Technology                                      |
-|--------------------|-------------------------------------------------|
-| **Data Generation** | Python, Faker, `kafka-python`                   |
-| **Message Broker**  | Apache Kafka 7.5.0 + Zookeeper                  |
-| **Stream Processing** | Apache Spark 3.5.0 Structured Streaming (PySpark) |
-| **Machine Learning** | PySpark MLlib — RandomForestClassifier           |
-| **Data Storage**    | Apache Parquet (Snappy compressed)               |
-| **Dashboard Backend** | Flask, Flask-CORS, Pandas                      |
-| **Dashboard Frontend** | HTML5, CSS3, Chart.js                         |
-| **Infrastructure**  | Docker, Docker Compose                           |
+The streaming pipeline is orchestrated using Docker and Docker Compose with 6 dedicated services:
 
----
-
-## Machine Learning Pipeline
-
-### Feature Engineering
-
-The model relies on contextual metadata engineered from the raw transaction JSON:
-
-| Feature               | Description                                                      |
-|-----------------------|------------------------------------------------------------------|
-| `amount`              | Transaction dollar amount (StandardScaled)                       |
-| `hour_of_day`         | Hour extracted from timestamp (0–23)                             |
-| `is_night_transaction` | Boolean flag — `True` if hour ≥ 22 or hour ≤ 5                  |
-| `amount_bucket`       | Ordinal category: Low (<$100), Medium, High, Very High (≥$2000) |
-| `geo_risk_score`      | Heuristic based on latitude: 2.0 (>60°), 1.0 (>40°), 0.5 (≤40°) |
-| `merchant_category`   | One-hot encoded merchant type (6 categories)                     |
-| `lat` / `lon`         | Raw geospatial coordinates                                       |
-
-### PySpark MLlib Pipeline Stages
-
-```
-StringIndexer (merchant_category → cat_idx)
-       ↓
-OneHotEncoder (cat_idx → cat_vec)
-       ↓
-StringIndexer (amount_bucket → bucket_idx)
-       ↓
-VectorAssembler → raw_features
-       ↓
-StandardScaler → features
-       ↓
-RandomForestClassifier (100 trees, maxDepth=10, weighted)
-```
-
-### Class Imbalance Strategy
-
-Instead of SMOTE (not natively supported in PySpark), the pipeline uses **class weighting**:
-
-```
-weight_fraud = total_rows / (2.0 × fraud_rows)
-weight_legit = total_rows / (2.0 × legit_rows)
-```
-
-This penalizes fraud misclassification ~25–50× more heavily, and runs entirely in Spark's distributed memory.
+| Service | Container Name | Technology | Ports | Role |
+|---|---|---|---|---|
+| **Zookeeper** | `zookeeper` | Confluent CP-Zookeeper 7.5.0 | `2181:2181` | Cluster state coordination & Kafka metadata leader election. |
+| **Kafka Broker** | `kafka` | Confluent CP-Kafka 7.5.0 | `9092:9092` | High-throughput distributed event log (`transactions` topic). |
+| **Spark Master** | `spark-master` | Apache Spark 3.5.0 | `7077:7077`, `8080:8080` | Cluster resource manager and master web interface. |
+| **Spark Worker** | `spark-worker` | Apache Spark 3.5.0 | `8081:8081` | Distributed execution worker (2 CPU cores, 2GB RAM). |
+| **Fraud Producer** | `fraud-producer` | Python 3.11, `kafka-python` | Internal network | Streams held-out test transactions from `fraudTest.csv` at configurable TPS (default: 25 tx/s). |
+| **Fraud Consumer** | `fraud-consumer` | Spark 3.5.0, PySpark, XGBoost | `4040:4040` | Spark Structured Streaming consumer scoring transactions across all 3 models in parallel. |
 
 ---
 
-## Machine Learning Models & Comparison
+## 3. Data Preprocessing & Feature Engineering
 
-The project provides two production-grade machine learning models trained on the streaming transaction schema:
+The feature engineering module (`features/feature_engineering.py`) derives 18 predictive features using pure Spark SQL catalyst expressions to avoid Python worker overhead:
 
-### 1. PySpark MLlib Random Forest (`train_model_pipeline.py`)
-- **Type**: Ensemble Bagging (Decision Trees)
-- **Configuration**: 100 trees, max depth = 10, weighted class loss
-- **Artifact**: `fraud_rf_model/` (PySpark PipelineModel)
-- **Use Case**: Native distributed execution inside Spark Structured Streaming consumer
+| Feature Category | Feature Column | Computation / Transformation | Purpose |
+|---|---|---|---|
+| **Temporal** | `transaction_hour` | $\text{hour}(\text{timestamp})$ [0–23] | Captures diurnal transaction patterns. |
+| **Temporal** | `transaction_day` | $\text{dayofmonth}(\text{timestamp})$ [1–31] | Captures monthly pay-cycle behaviors. |
+| **Temporal** | `transaction_month` | $\text{month}(\text{timestamp})$ [1–12] | Captures seasonal fraud fluctuations. |
+| **Temporal** | `transaction_day_of_week` | $\text{dayofweek}(\text{timestamp})$ [1=Sun, 7=Sat] | Captures weekend fraud surges. |
+| **Temporal** | `is_night_transaction` | $\mathbb{I}(\text{hour} \ge 22 \lor \text{hour} \le 5)$ | Flags high-risk late-night / early-morning purchases. |
+| **Temporal** | `is_weekend` | $\mathbb{I}(\text{dayofweek} \in \{1, 7\})$ | Flags non-business day activity. |
+| **Transaction** | `transaction_amount` | $\text{amt}$ (float) | Raw purchase amount in USD. |
+| **Transaction** | `log_transaction_amount` | $\ln(1 + \text{amt})$ | Dampens extreme transaction skew and power-law distribution. |
+| **Geographic** | `cardholder_latitude` | $\text{lat}$ | Cardholder home latitude coordinate. |
+| **Geographic** | `cardholder_longitude` | $\text{long}$ | Cardholder home longitude coordinate. |
+| **Geographic** | `merchant_latitude` | $\text{merch\_lat}$ | Merchant terminal latitude. |
+| **Geographic** | `merchant_longitude` | $\text{merch\_long}$ | Merchant terminal longitude. |
+| **Spatial Distance** | `home_to_merchant_distance` | Haversine Formula ($R=6371\text{km}$) | Physical distance between cardholder residence and transaction point. |
+| **Customer** | `customer_age` | $(\text{trans\_date} - \text{dob}) / 365.25$ | Cardholder age at transaction timestamp. |
+| **Demographics** | `log_city_pop` | $\ln(1 + \text{city\_pop})$ | City urbanization scale. |
+| **Categorical** | `category_ohe` | One-Hot Encoded (14 merchant categories) | Purchase domain (grocery, travel, shopping, entertainment, etc.). |
+| **Categorical** | `gender_ohe` | One-Hot Encoded (`M`, `F`) | Cardholder gender. |
+| **Categorical** | `state_ohe` | One-Hot Encoded (50 US states) | Transaction jurisdiction. |
 
-### 2. Extreme Gradient Boosting - XGBoost (`train_xgboost_model.py`)
-- **Type**: Ensemble Boosting (Gradient Boosted Decision Trees)
-- **Configuration**: 100 estimators, max depth = 6, learning rate = 0.1, subsample = 0.8, `scale_pos_weight` = 15.32
-- **Artifacts**: `fraud_xgb_model.json` & `fraud_xgb_pipeline.joblib`
-- **Use Case**: State-of-the-art tabular classification, ultra-fast microsecond inference latency
-
-### Real-World Benchmark Performance (Trained on Kaggle Sparkov Dataset)
-
-Evaluated on **50,000 real unseen test transactions** from \raudTest.csv\ (199 actual fraudulent transactions):
-
-| Metric / Dimension | Random Forest (Spark MLlib) | XGBoost Classifier (Real-World) |
-|---|---|---|
-| **Ensemble Paradigm** | Bagging (Parallel Independent Trees) | Boosting (Sequential Error Correction) |
-| **Accuracy** | 98.70% | **98.95%** |
-| **AUC-ROC** | 0.9821 | **0.9902** |
-| **AUC-PR** | 0.7634 | **0.6501** |
-| **F1 Score** | 0.3540 | **0.3902** |
-| **Fraud Catch Rate (Recall)** | 78.89% | **84.42%** (168 of 199 caught) |
-| **False Alarm Rate** | 1.12% | **0.9919%** (494 false positives / 49,801 legit) |
-| **Confusion Matrix** | \TP=157, FP=558, FN=42, TN=49,243\ | \TP=168, FP=494, FN=31, TN=49,307\ |
-| **Class Balancing** | Sample weight column (\classWeight\) | Loss scaling parameter (\scale_pos_weight\) |
-| **Training Latency** | ~30 - 45s (Spark JVM overhead) | **~1.8s (C++ optimized engine)** |
-| **Model Size / Format** | Distributed directory (\raud_rf_model/\) | Compact JSON / Joblib (\raud_xgb_pipeline.joblib\) |
+> **Strict Anti-Leakage Guardrail**: Direct personal identifiers (`cc_num`, `trans_num`, cardholder names, street addresses) are excluded from model training. The ground-truth label `actual_is_fraud` is included in Kafka solely for downstream accuracy verification and is **never** fed to the ML estimators.
 
 ---
 
-## One-Click Launchers (Windows)
+## 4. Machine Learning Models & Evaluated Results
 
-The repository provides ready-to-run automation scripts:
+All three models were trained on `fraudTrain.csv` (1,296,675 records, 7,506 frauds) and evaluated on the held-out `fraudTest.csv` (555,719 records, 2,145 frauds, natural 0.39% fraud distribution).
 
-- **un_real_dataset_stream.bat\**: Checks Docker, launches all 6 containers, starts the live stream from \raudTest.csv\, resets session counters to 0, launches the Dashboard on \http://localhost:5050\, and starts the XGBoost live consumer.
-- **un_xgboost_with_dashboard.bat\**: Launches the pipeline, opens the Dashboard, and starts the XGBoost live scoring consumer.
-- **\stop_project.bat\**: Gracefully terminates all 6 Docker containers, stops Python background workers, and releases ports 5050 and 9092.
+### Evaluation Metrics Comparison Table
+
+| Metric | Linear Regression (Baseline) | Random Forest | XGBoost (Recommended) |
+|---|:---:|:---:|:---:|
+| **ROC-AUC** | 0.8940 | 0.9861 | **0.9960** |
+| **PR-AUC (Precision-Recall AUC)** | 0.1618 | 0.7086 | **0.8461** |
+| **Precision** | 35.33% | 13.77% | **43.68%** |
+| **Recall (Fraud Detection Rate)** | 34.97% | **92.17%** | 88.44% |
+| **F1 Score** | 0.3515 | 0.2395 | **0.5848** |
+| **Overall Accuracy** | 99.50% | 97.74% | **99.52%** |
+| **False Positive Rate (FPR)** | **0.25%** | 2.24% | 0.44% |
+| **False Negative Rate (FNR)** | 65.03% | **7.83%** | 11.56% |
+| **True Positives (TP)** | 750 / 2,145 | **1,977 / 2,145** | 1,897 / 2,145 |
+| **False Positives (FP)** | 1,373 | 12,385 | **2,446** |
+| **True Negatives (TN)** | 552,201 | 541,189 | 551,128 |
+| **False Negatives (FN)** | 1,395 | **168** | 248 |
+| **Training Time** | **25.1s** | 488.1s | 794.0s |
+| **Inference Time (555K rows)** | 26.86s | 50.45s | **20.48s** |
+| **Calibrated Threshold** | 0.10 | 0.50 | 0.60 |
+
+*All metrics are verified empirical results loaded directly by the dashboard from [results/model_comparison.json](fraud-detection-pipeline-main/results/model_comparison.json).*
+
+### Detailed Model Profiles:
+
+1. **Model 1: Linear Regression (Baseline Fraud Scorer)**
+   - Implemented via `pyspark.ml.regression.LinearRegression` with L2 regularization (`regParam=0.001`).
+   - Generates continuous risk scores against the binary target. Scores are converted to binary predictions via a calibrated threshold ($t=0.10$) derived by maximizing validation F1.
+   - Serves as an analytical baseline demonstrating why linear regression underperforms non-linear models on extreme class imbalance.
+
+2. **Model 2: PySpark Random Forest Classifier**
+   - Implemented via `pyspark.ml.classification.RandomForestClassifier` with 100 decision trees, max depth of 10, and class weight balancing.
+   - Achieves the highest recall (**92.17%** fraud detection rate), capturing 1,977 of 2,145 frauds, but suffers from higher false alarms (12,385 false positives, 13.77% precision).
+
+3. **Model 3: XGBoost Classifier (Champion Model)**
+   - Implemented via distributed XGBoost with `scale_pos_weight = 171.8` to account for the 171:1 class imbalance ratio, 300 estimators, and validation PR-AUC optimization.
+   - Delivers the best overall operational performance: **PR-AUC 0.8461**, **ROC-AUC 0.9960**, **F1 0.5848**, and **43.68% precision** while retaining an **88.44% recall** (only 2,446 false alarms across 555,719 transactions).
 
 ---
 
-## Quick Start
+## 5. Real-Time Streaming & Storage Mechanics
+
+### Kafka Replay Producer (`producer/transaction_producer.py`)
+- Reads held-out test transactions sequentially from `fraudTest.csv`.
+- Dispatches JSON messages to topic `transactions` at a steady configurable rate (default: 25 transactions per second).
+- Attaches `actual_is_fraud` as a separate metadata field for downstream audit logging without passing it into feature extraction.
+- Supports start, pause, resume, and full replay cycling.
+
+### Structured Streaming Consumer (`consumer/spark_consumer_ml.py`)
+- Reads raw streaming messages from Kafka in micro-batches (5-second trigger intervals).
+- Applies feature engineering and runs parallel inference across all three models.
+- Generates transaction-level records:
+  ```json
+  {
+    "transaction_id": "c804bbd41661c823c43bee55be7bc341",
+    "trans_date_trans_time": "2020-06-22 09:25:03",
+    "amt": 15.24,
+    "merchant": "fraud_Jones, Sawayn and Romaguera",
+    "category": "misc_net",
+    "actual_is_fraud": 0,
+    "lr_score": 0.0020,
+    "lr_prediction": 0,
+    "lr_correct": 1,
+    "rf_score": 0.1085,
+    "rf_prediction": 0,
+    "rf_correct": 1,
+    "xgb_score": 0.0011,
+    "xgb_prediction": 0,
+    "xgb_correct": 1,
+    "prediction_timestamp": "2026-11-05 06:40:00"
+  }
+  ```
+- Appends predictions to Apache Parquet format using Snappy compression under `storage/predictions/combined_predictions/`.
+
+---
+
+## 6. FraudShield Dashboard
+
+The dashboard provides real-time visibility into transactions, multi-model consensus, and container health:
+
+- **Web URL**: `http://localhost:5050`
+- **Dark Financial Analytics Theme**: Built with HTML5, CSS3, JavaScript, and Chart.js.
+- **Key Modules**:
+  1. **Executive KPI Ribbon**: Total transactions processed, actual fraud detected, legitimate traffic count, and live fraud rate.
+  2. **6-Container Infrastructure Health**: Real-time status indicators for all Docker services with automatic restart indicators.
+  3. **3-Model Comparison Matrix**: Tabular side-by-side view with best-in-class metric badges and individual confusion matrices.
+  4. **Live Transaction Feed**: Real-time incoming transactions highlighting consensus fraud (Red), consensus legit (Green), and model disagreements (Yellow).
+  5. **Model Consensus Donut**: Visualizing agreement (Unanimous Fraud, Unanimous Legit, 2-Model Flagged, 1-Model Flagged).
+  6. **Dynamic Model Leaderboard**: Real-time sortable ranking of models based on Recall, Precision, F1, PR-AUC, or inference latency.
+  7. **Interactive Pipeline Controls**: One-click **Start Pipeline**, **Stop Pipeline**, **Pause**, **Resume**, and **Replay Dataset** buttons.
+
+### REST API Endpoints:
+
+| Endpoint | Method | Description |
+|---|:---:|---|
+| `/api/health` | `GET` | Service health status and API version. |
+| `/api/containers` | `GET` | Real-time status of all 6 Docker containers. |
+| `/api/models/comparison` | `GET` | Measured evaluation metrics for Linear Regression, Random Forest, and XGBoost. |
+| `/api/models/linear-regression` | `GET` | Individual metrics and confusion matrix for Linear Regression. |
+| `/api/models/random-forest` | `GET` | Individual metrics and confusion matrix for Random Forest. |
+| `/api/models/xgboost` | `GET` | Individual metrics and confusion matrix for XGBoost. |
+| `/api/model-agreement` | `GET` | Consensus statistics across all 3 models from streaming Parquet data. |
+| `/api/predictions/live` | `GET` | Latest 100 transactions scored by all 3 models with ground-truth comparison. |
+| `/api/fraud-caught` | `GET` | Transactions where at least one model flagged fraud. |
+| `/api/transactions` | `GET` | In-memory transaction telemetry and live log feed. |
+| `/api/pipeline/start` | `POST` | Launch Docker Compose streaming services (`docker compose up -d`). |
+| `/api/pipeline/stop` | `POST` | Stop Docker Compose streaming services (`docker compose down`). |
+| `/api/pipeline/pause` | `POST` | Pause transaction stream (`docker pause fraud-producer`). |
+| `/api/pipeline/resume` | `POST` | Resume transaction stream (`docker unpause fraud-producer`). |
+| `/api/pipeline/replay` | `POST` | Restart producer from transaction 0 (`docker restart fraud-producer`). |
+
+---
+
+## 7. Quickstart Guide
 
 ### Prerequisites
+- **Docker Desktop** (with Docker Compose v2)
+- **Python 3.11 or 3.12**
+- **Apache Spark 3.5.0** (or let Docker handle Spark container execution)
+- **Hadoop Winutils** (only if training natively on Windows: `C:\hadoop\bin\winutils.exe`)
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running)
-- Python 3.10+ (for dashboard & training scripts)
-- Java 8+ (for local PySpark execution)
-
-### 1. Launch the Streaming Pipeline
-
+### Step 1: Clone Repository & Place Data Files
 ```bash
+git clone https://github.com/jayesh1310/Fraud-Detection.git
+cd Fraud-Detection
+```
+Download `fraudTrain.csv` and `fraudTest.csv` from [Kaggle Kartik2112 Fraud Detection](https://www.kaggle.com/datasets/kartik2112/fraud-detection) and place them in the project root:
+```text
+Fraud-Detection/
+  fraudTrain.csv
+  fraudTest.csv
+  fraud-detection-pipeline-main/
+  dashboard/
+```
+
+### Step 2: (Optional) Re-train Machine Learning Models
+Pre-trained models and comparison metrics are already provided in `models/` and `results/`. To re-train all three models from scratch on `fraudTrain.csv`:
+```powershell
 cd fraud-detection-pipeline-main
-docker compose up -d
+python training/train_models.py
+python training/evaluate_models.py
 ```
 
-This starts all 6 containers: Zookeeper, Kafka, Spark Master, Spark Worker, Producer, and Consumer.
-
-### 2. Watch the Live Stream
-
-```bash
-# View the transaction producer generating data
-docker logs fraud-producer -f
-
-# View the Spark ML consumer scoring transactions
-docker logs fraud-consumer -f
+### Step 3: Build & Start the Streaming Pipeline
+From `fraud-detection-pipeline-main/`:
+```powershell
+docker compose up -d --build
+```
+Verify all 6 services are running:
+```powershell
+docker compose ps
 ```
 
-### 3. Access the Spark UI
-
-Open [http://localhost:8080](http://localhost:8080) for the Spark Master dashboard, or [http://localhost:4040](http://localhost:4040) for the Spark application UI showing streaming micro-batches.
-
-### 4. Run Live Streaming Fraud Detection with XGBoost
-
-To score the live Kafka transaction stream directly using the **XGBoost model**:
-
-```bash
-# In the project root folder:
-python stream_consumer_xgb.py
-```
-
-This connects directly to the Kafka stream (`localhost:9092`), computes real-time feature engineering, feeds each transaction into `fraud_xgb_pipeline.joblib`, prints live color-coded fraud alerts, and saves flagged fraud transactions to `./temp_flagged_xgb/` in Parquet format.
-
-### 5. Launch the FraudShield Dashboard
-
-```bash
-cd dashboard
-pip install flask flask-cors pandas pyarrow
+### Step 4: Start the Dashboard Backend
+From `dashboard/`:
+```powershell
 python app.py
 ```
 
-Open [http://localhost:5050](http://localhost:5050) to access the live monitoring dashboard with:
-- Real-time KPI cards (transactions seen, fraud detected, fraud rate)
-- Chart.js line charts and donut charts
-- Docker container health status
-- ML model metrics & confusion matrix
-- Live transaction feed with fraud highlighting
-- ML-flagged fraud table (from Parquet storage)
-- One-click pipeline start/stop controls
+### Step 5: Open Dashboard & Monitor
+Open **[http://localhost:5050](http://localhost:5050)** in your browser.
 
-### 5. View Caught Fraud (CLI)
+- **Spark Master UI**: [http://localhost:8080](http://localhost:8080)
+- **Spark Worker UI**: [http://localhost:8081](http://localhost:8081)
+- **Spark Streaming Jobs UI**: [http://localhost:4040](http://localhost:4040)
 
-```bash
-docker cp fraud-consumer:/data/output/fraud_flagged ./temp_flagged
-python -c "
-import pandas as pd, glob
-files = glob.glob('./temp_flagged/*.parquet')
-df = pd.concat([pd.read_parquet(f) for f in files])
-print(df[df['flagged_fraud']==True][['transaction_id','amount','merchant_category','is_fraud','flagged_fraud']].tail(10))
-"
-```
-
-### 6. Stop the Pipeline
-
-```bash
-cd fraud-detection-pipeline-main
+To stop the entire pipeline at any time:
+```powershell
 docker compose down
 ```
+Or click the **Stop Pipeline** button directly on the dashboard.
 
 ---
 
-## Re-Training the Models
+## 8. Repository Structure
 
-### Retrain the Random Forest Pipeline:
-```bash
-# Ensure you have PySpark and Java configured
-python train_model_pipeline.py
+```text
+Fraud-Detection/
+├── .gitignore                                      # Excludes large CSVs, Parquet storage, checkpoints, .crc files
+├── README.md                                       # Comprehensive system documentation & evaluation report
+├── dashboard/
+│   ├── app.py                                      # Flask REST API backend, log poller & pipeline controller
+│   └── index.html                                  # Modern dark financial analytics UI (Chart.js)
+└── fraud-detection-pipeline-main/
+    ├── docker-compose.yml                          # 6-service Docker orchestration
+    ├── consumer/
+    │   ├── Dockerfile                              # Spark 3.5.0 + Python dependencies + Kafka JARs
+    │   ├── requirements.txt                        # pyspark, kafka-python, xgboost, scikit-learn, pandas
+    │   └── spark_consumer_ml.py                    # 3-model parallel streaming inference & Parquet sink
+    ├── features/
+    │   └── feature_engineering.py                  # Pure Spark SQL feature engineering (18 features)
+    ├── ingestion/
+    │   └── ingest_data.py                          # CSV to optimized Parquet ingestion utility
+    ├── models/
+    │   ├── model_metadata.json                     # Feature dimensions, calibrated thresholds, scale_pos_weight
+    │   ├── preprocessor/                           # Fitted StringIndexer, OHE, VectorAssembler, StandardScaler
+    │   ├── linear_regression/                      # Trained Spark MLlib LinearRegression model
+    │   ├── random_forest/                          # Trained Spark MLlib RandomForest model (100 trees)
+    │   └── xgboost/                                # Saved XGBoost Booster (xgb_model.json)
+    ├── producer/
+    │   ├── Dockerfile                              # Lightweight Python 3.11 streaming container
+    │   ├── requirements.txt                        # kafka-python
+    │   └── transaction_producer.py                 # Historical transaction replay Kafka producer
+    ├── results/
+    │   └── model_comparison.json                   # Verified empirical evaluation metrics for all 3 models
+    ├── storage/                                    # Parquet prediction sink & micro-batch checkpoints
+    └── training/
+        ├── train_models.py                         # 3-model training & threshold calibration script
+        └── evaluate_models.py                      # Multi-metric evaluation on held-out fraudTest.csv
 ```
-This reads `training_data_clean.parquet`, runs feature engineering, trains the 6-stage PySpark pipeline, evaluates metrics, and exports the model to `fraud_rf_model/`.
-
-### Train / Retrain the XGBoost Model:
-```bash
-# Ensure you have xgboost and scikit-learn installed
-python train_xgboost_model.py
-```
-This trains an XGBoost classifier with stratified 80/20 train/test evaluation, outputs comprehensive metrics (AUC-ROC, F1, Confusion Matrix, Gain feature importances), and saves `fraud_xgb_model.json` and `fraud_xgb_pipeline.joblib`.
 
 ---
 
-## Docker Services
-
-| Container        | Image                           | Exposed Ports | Role                                        |
-|------------------|---------------------------------|:------------:|----------------------------------------------|
-| `zookeeper`      | `confluentinc/cp-zookeeper:7.5.0` | 2181         | Kafka cluster coordination                   |
-| `kafka`          | `confluentinc/cp-kafka:7.5.0`     | 9092         | Message broker (internal: 29092)             |
-| `spark-master`   | `apache/spark:3.5.0`              | 7077, 8080   | Spark cluster master                         |
-| `spark-worker`   | `apache/spark:3.5.0`              | 8081         | Spark worker (2 cores, 2GB RAM)              |
-| `fraud-producer` | Custom Python build                | —            | Generates 100 tx/sec into Kafka              |
-| `fraud-consumer` | Custom PySpark build               | 4040         | ML inference + Parquet output every 3 seconds |
-
----
-
-## Dashboard REST API
-
-| Method | Endpoint               | Description                                           |
-|--------|------------------------|-------------------------------------------------------|
-| GET    | `/`                    | Serves the FraudShield HTML dashboard                 |
-| GET    | `/api/health`          | Health check                                          |
-| GET    | `/api/containers`      | Running Docker container statuses                     |
-| GET    | `/api/transactions`    | Live stats: total seen, fraud count, fraud rate, feed |
-| GET    | `/api/producer/logs`   | Last 60 parsed producer log entries                   |
-| GET    | `/api/consumer/logs`   | Last 60 Spark consumer log entries                    |
-| GET    | `/api/model`           | Model metrics (AUC-ROC, F1, Catch Rate) & features   |
-| GET    | `/api/fraud-caught`    | Top 25 ML-flagged fraud transactions from Parquet     |
-| GET    | `/api/pipeline/status` | Boolean pipeline running status                       |
-| POST   | `/api/pipeline/start`  | Triggers `docker compose up -d`                       |
-| POST   | `/api/pipeline/stop`   | Triggers `docker compose down`                        |
-
----
-
-## Documentation
-
-
-| [SCHEMA.md](fraud-detection-pipeline-main/SCHEMA.md) | Transaction schema documentation |
-
----
-
-## License
-
-This project is for educational and demonstration purposes.
+## 9. License & Attribution
+- Dataset: [Kartik2112 Fraud Detection Dataset](https://www.kaggle.com/datasets/kartik2112/fraud-detection) generated using the open-source Sparkov Data Generation tool.
+- Developed as a Big Data financial fraud detection architecture.

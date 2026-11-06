@@ -1,128 +1,245 @@
+"""
+spark_consumer_ml.py
+--------------------
+FraudShield 2.0 — Three-Model Spark Structured Streaming Consumer.
+
+For every Kafka micro-batch:
+  1. Deserialize JSON using the flat schema (raw Kaggle fields).
+  2. Apply feature engineering (shared features/feature_engineering.py).
+  3. Apply shared preprocessing pipeline (StringIndexer+OHE+VectorAssembler+StandardScaler).
+  4. Score with Linear Regression model  -> lr_score, lr_prediction.
+  5. Score with Random Forest model      -> rf_score, rf_prediction.
+  6. Score with XGBoost model            -> xgb_score, xgb_prediction.
+  7. Record actual_is_fraud (ground-truth label — NOT used as ML feature).
+  8. Write combined predictions to Parquet (Snappy compression).
+
+Output schema per transaction:
+  transaction_id, trans_date_trans_time, amt, merchant, category,
+  city, state, actual_is_fraud,
+  lr_score, lr_prediction, lr_correct,
+  rf_score, rf_prediction, rf_correct,
+  xgb_score, xgb_prediction, xgb_correct,
+  prediction_timestamp
+"""
+
+import json
 import os
 import sys
+import time
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json
+from pyspark.sql.functions import col, from_json, when
 from pyspark.sql.types import (
-    BooleanType,
-    DoubleType,
-    StringType,
-    StructField,
-    StructType,
+    DoubleType, IntegerType, LongType, StringType, StructField, StructType,
 )
 from pyspark.ml import PipelineModel
+from pyspark.ml.regression import LinearRegressionModel
+from pyspark.ml.classification import RandomForestClassificationModel
+from pyspark.ml.functions import vector_to_array
 
-# Configuration
+# ── Configuration ─────────────────────────────────────────────────────────────
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:29092")
 KAFKA_TOPIC             = os.getenv("KAFKA_TOPIC", "transactions")
-SPARK_MASTER            = os.getenv("SPARK_MASTER", "local[*]")
-OUTPUT_PATH             = os.getenv("OUTPUT_PATH", "/data/output/fraud_flagged")
-CHECKPOINT_PATH         = os.getenv("CHECKPOINT_PATH", "/data/checkpoints/fraud_consumer")
-PYTHONPATH              = os.getenv("PYTHONPATH", "/app")
-# The model is copied into the consumer directory and built into the image at /app/fraud_rf_model
-MODEL_PATH              = os.getenv("MODEL_PATH", "/app/fraud_rf_model")
+SPARK_MASTER            = os.getenv("SPARK_MASTER", "local[2]")
 
-LOCATION_SCHEMA = StructType([
-    StructField("city",    StringType()),
-    StructField("country", StringType()),
-    StructField("lat",     DoubleType()),
-    StructField("lon",     DoubleType()),
-])
+# Mounted volume paths (see docker-compose.yml)
+MODELS_DIR        = os.getenv("MODELS_DIR",    "/app/models")
+OUTPUT_PATH       = os.getenv("OUTPUT_PATH",   "/data/storage/predictions/combined_predictions")
+CHECKPOINT_PATH   = os.getenv("CHECKPOINT_PATH", "/data/storage/checkpoints/consumer_v2")
+PYTHONPATH_ENV    = os.getenv("PYTHONPATH",    "/app")
 
+# ── Incoming Kafka message schema (matches producer) ──────────────────────────
 TRANSACTION_SCHEMA = StructType([
-    StructField("transaction_id",    StringType()),
-    StructField("timestamp",         StringType()),
-    StructField("user_id",           StringType()),
-    StructField("card_number",       StringType()),
-    StructField("merchant",          StringType()),
-    StructField("merchant_category", StringType()),
-    StructField("amount",            DoubleType()),
-    StructField("currency",          StringType()),
-    StructField("location",          LOCATION_SCHEMA),
-    StructField("is_fraud",          BooleanType()),
+    StructField("transaction_id",        StringType()),
+    StructField("cc_num",               StringType()),
+    StructField("trans_num",            StringType()),
+    StructField("trans_date_trans_time", StringType()),
+    StructField("unix_time",            LongType()),
+    StructField("merchant",             StringType()),
+    StructField("category",             StringType()),
+    StructField("amt",                  DoubleType()),
+    StructField("first",                StringType()),
+    StructField("last",                 StringType()),
+    StructField("gender",               StringType()),
+    StructField("dob",                  StringType()),
+    StructField("city",                 StringType()),
+    StructField("state",                StringType()),
+    StructField("zip",                  StringType()),
+    StructField("city_pop",             LongType()),
+    StructField("lat",                  DoubleType()),
+    StructField("long",                 DoubleType()),
+    StructField("merch_lat",            DoubleType()),
+    StructField("merch_long",           DoubleType()),
+    # Ground-truth label — stored for evaluation AFTER prediction, never as ML input
+    StructField("actual_is_fraud",      IntegerType()),
 ])
 
+
+# ── SparkSession ──────────────────────────────────────────────────────────────
 def create_spark_session() -> SparkSession:
     return (
         SparkSession.builder
-        .appName("FraudDetectionConsumerML")
-        .config("spark.executorEnv.PYTHONPATH", PYTHONPATH)
-        .config("spark.yarn.appMasterEnv.PYTHONPATH", PYTHONPATH)
+        .appName("FraudShield-3ModelConsumer")
+        .config("spark.executorEnv.PYTHONPATH", PYTHONPATH_ENV)
+        .config("spark.yarn.appMasterEnv.PYTHONPATH", PYTHONPATH_ENV)
+        .config("spark.sql.parquet.compression.codec", "snappy")
         .getOrCreate()
     )
 
+
+# ── Main ─────────────────────────────────────────────────────────────────────
 def main():
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
+    os.makedirs(OUTPUT_PATH,     exist_ok=True)
     os.makedirs(CHECKPOINT_PATH, exist_ok=True)
 
     spark = create_spark_session()
     spark.sparkContext.setLogLevel("WARN")
 
-    print(f"[Consumer] Loading ML model from {MODEL_PATH} ...")
-    try:
-        model = PipelineModel.load(MODEL_PATH)
-        print("[Consumer] ML model loaded successfully.")
-    except Exception as e:
-        print(f"[Consumer] Failed to load model: {e}", file=sys.stderr)
-        sys.exit(1)
+    # ── Load model metadata (thresholds) ────────────────────────────────────
+    meta_path = os.path.join(MODELS_DIR, "model_metadata.json")
+    lr_threshold  = 0.5
+    xgb_threshold = 0.5
+    if os.path.isfile(meta_path):
+        with open(meta_path, encoding="utf-8") as f:
+            meta = json.load(f)
+        lr_threshold  = float(meta.get("lr_threshold",  0.5))
+        xgb_threshold = float(meta.get("xgb_threshold", 0.5))
+    print(f"[Consumer] LR threshold={lr_threshold}  XGB threshold={xgb_threshold}", flush=True)
 
+    # ── Load models ──────────────────────────────────────────────────────────
+    print("[Consumer] Loading preprocessing pipeline …", flush=True)
+    prep_model = PipelineModel.load(os.path.join(MODELS_DIR, "preprocessor"))
+
+    print("[Consumer] Loading Linear Regression model …", flush=True)
+    lr_model = LinearRegressionModel.load(os.path.join(MODELS_DIR, "linear_regression"))
+
+    print("[Consumer] Loading Random Forest model …", flush=True)
+    rf_model = RandomForestClassificationModel.load(os.path.join(MODELS_DIR, "random_forest"))
+
+    xgb_model_path = os.path.join(MODELS_DIR, "xgboost", "xgb_model.json")
+    print(f"[Consumer] Loading XGBoost model: {xgb_model_path}", flush=True)
+    import xgboost as xgb
+    booster = xgb.Booster()
+    booster.load_model(xgb_model_path)
+
+    sys.path.insert(0, "/app")
+    from features.feature_engineering import enrich_transaction, FEATURES_COL
+
+    # ── 1. Read from Kafka ───────────────────────────────────────────────────
     raw_stream = (
         spark.readStream.format("kafka")
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
         .option("subscribe", KAFKA_TOPIC)
-        .option("startingOffsets", "earliest")
+        .option("startingOffsets", "latest")
         .option("failOnDataLoss", "false")
         .load()
     )
 
-    parsed = raw_stream.select(
-        from_json(col("value").cast("string"), TRANSACTION_SCHEMA).alias("data")
-    ).select("data.*")
+    # ── 2. Parse JSON ────────────────────────────────────────────────────────
+    parsed = (
+        raw_stream
+        .select(from_json(col("value").cast("string"), TRANSACTION_SCHEMA).alias("d"))
+        .select("d.*")
+        .filter(col("transaction_id").isNotNull())
+    )
 
-    from features.feature_engineering import enrich_transaction
+    # ── 3. Micro-batch processor ─────────────────────────────────────────────
+    def process_batch(batch_df, batch_id):
+        if not batch_df.take(1):
+            return
 
-    enriched = enrich_transaction(parsed)
+        try:
+            # 1. Feature engineering
+            enriched = enrich_transaction(batch_df)
 
-    # Convert structs/booleans to formats the ML Pipeline requires
-    ml_ready = enriched.withColumn("is_night_int", col("is_night_transaction").cast("int")) \
-                       .withColumn("lat", col("location.lat")) \
-                       .withColumn("lon", col("location.lon"))
+            # 2. Shared preprocessing
+            preprocessed = prep_model.transform(enriched)
 
-    # Apply the Random Forest ML Pipeline
-    scored = model.transform(ml_ready)
+            # 3. LR scoring
+            lr_scored = lr_model.transform(preprocessed)
+            scored = (
+                lr_scored
+                .withColumnRenamed("prediction", "lr_raw_score")
+                .withColumn("lr_score",      col("lr_raw_score").cast(DoubleType()))
+                .withColumn("lr_prediction", when(col("lr_raw_score") >= lr_threshold, 1).otherwise(0).cast(IntegerType()))
+            )
 
-    # Filter flagged frauds (prediction == 1.0) and rename to flagged_fraud
-    flagged = scored.withColumn("flagged_fraud", col("prediction") == 1.0) \
-                    .filter(col("flagged_fraud") == True)
-                    
-    # Only keep the final columns per SCHEMA.md
-    final_cols = ["transaction_id", "timestamp", "user_id", "card_number", 
-                  "merchant", "merchant_category", "amount", "currency", 
-                  "location", "is_fraud", "event_time", "hour_of_day", 
-                  "is_night_transaction", "amount_bucket", "geo_risk_score", 
-                  "flagged_fraud"]
-                  
-    final_df = flagged.select(*final_cols)
+            # 4. RF scoring
+            rf_scored = rf_model.transform(scored)
+            scored = (
+                rf_scored
+                .withColumn("rf_score",      vector_to_array(col("probability"))[1].cast(DoubleType()))
+                .withColumnRenamed("prediction", "rf_prediction")
+                .withColumn("rf_prediction", col("rf_prediction").cast(IntegerType()))
+            )
 
+            # 5. Extract for XGBoost & Final Parquet
+            scored = scored.withColumn("features_array", vector_to_array(FEATURES_COL))
+            pdf = scored.select(
+                "transaction_id", "trans_date_trans_time", "amt", "merchant", "category",
+                "city", "state",
+                "actual_is_fraud",
+                "lr_score", "lr_prediction",
+                "rf_score", "rf_prediction",
+                "features_array",
+            ).toPandas()
+
+            if len(pdf) == 0:
+                return
+
+            import numpy as np
+            import pandas as pd
+
+            X = np.vstack(pdf["features_array"].values)
+            xgb_probs = booster.predict(xgb.DMatrix(X))
+
+            pdf["xgb_score"]      = [float(p) for p in np.round(xgb_probs, 4)]
+            pdf["xgb_prediction"] = (xgb_probs >= xgb_threshold).astype(int)
+            pdf["lr_correct"]     = (pdf["lr_prediction"]  == pdf["actual_is_fraud"]).astype(int)
+            pdf["rf_correct"]     = (pdf["rf_prediction"]  == pdf["actual_is_fraud"]).astype(int)
+            pdf["xgb_correct"]    = (pdf["xgb_prediction"] == pdf["actual_is_fraud"]).astype(int)
+            pdf["prediction_timestamp"] = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%S")
+            pdf.drop(columns=["features_array"], inplace=True)
+
+            out_spark_df = spark.createDataFrame(pdf)
+            (
+                out_spark_df.write
+                .mode("append")
+                .format("parquet")
+                .option("compression", "snappy")
+                .save(OUTPUT_PATH)
+            )
+
+            flagged = int(((pdf["lr_prediction"] == 1) | (pdf["rf_prediction"] == 1) | (pdf["xgb_prediction"] == 1)).sum())
+            print(f"[Consumer] Batch #{batch_id}: {len(pdf)} txs processed, {flagged} flagged as fraud.", flush=True)
+
+        except Exception as err:
+            print(f"[Consumer] Error processing batch #{batch_id}: {err}", file=sys.stderr, flush=True)
+
+    # ── 4. Start Streaming Query ─────────────────────────────────────────────
     query = (
-        final_df.writeStream
-        .outputMode("append")
-        .format("parquet")
-        .option("path", OUTPUT_PATH)
+        parsed.writeStream
+        .foreachBatch(process_batch)
         .option("checkpointLocation", CHECKPOINT_PATH)
-        .trigger(processingTime="3 seconds")
+        .trigger(processingTime="5 seconds")
         .start()
     )
 
-    print(f"[Consumer] Streaming ML query started (id={query.id}).")
+    print(f"[Consumer] 3-model streaming query started (id={query.id})", flush=True)
+    print(f"[Consumer] Output -> {OUTPUT_PATH}", flush=True)
+    print(f"[Consumer] Checkpoint -> {CHECKPOINT_PATH}", flush=True)
+    print("[Consumer] Awaiting termination …", flush=True)
+
     try:
         query.awaitTermination()
     except KeyboardInterrupt:
+        print("[Consumer] Interrupted — stopping.", flush=True)
         query.stop()
     except Exception as exc:
-        print(f"[Consumer] Streaming query failed: {exc}", file=sys.stderr)
+        print(f"[Consumer] Query failed: {exc}", file=sys.stderr, flush=True)
         query.stop()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

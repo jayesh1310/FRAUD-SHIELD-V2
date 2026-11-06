@@ -1,1337 +1,1810 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>FraudShield — Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FraudShield 2.0 — Big Data Fraud Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+    /* ===================== CSS VARIABLES ===================== */
     :root {
-      --bg:       #f9f9f9;
-      --surface:  #ffffff;
-      --border:   #e4e4e7;
-      --accent:   #2563eb;
-      --danger:   #dc2626;
-      --success:  #16a34a;
-      --warn:     #d97706;
-      --text:     #18181b;
-      --muted:    #71717a;
-      --mono:     'JetBrains Mono', monospace;
-      --radius:   8px;
-      --gap:      16px;
+      --bg-primary: #0d1117;
+      --bg-card: #1c2128;
+      --bg-card-hover: #262c36;
+      --border: #30363d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --accent-blue: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-yellow: #d29922;
+      --accent-gold: #ffd700;
+      --lr-color: #4f7bdf;
+      --rf-color: #2ecc71;
+      --xgb-color: #e74c3c;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --transition: 0.2s ease;
     }
 
-    html { font-size: 14px; }
+    /* ===================== RESET & BASE ===================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.6;
       min-height: 100vh;
     }
 
-    .wrapper {
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 28px 24px;
-    }
+    a { color: var(--accent-blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
-    /* == Header == */
-    header {
+    /* ===================== SCROLLBAR ===================== */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+    /* ===================== NAVIGATION ===================== */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(13, 17, 23, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-      gap: 12px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--border);
+      gap: 24px;
+      height: 60px;
     }
-    .logo h1 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      color: var(--text);
-    }
-    .logo h1 span { color: var(--accent); }
-    .logo p {
-      font-size: 0.72rem;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-    .header-right {
+
+    .navbar-brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+      color: var(--text-primary);
     }
-    #last-updated { font-size: 0.72rem; color: var(--muted); }
-    .live-badge {
+
+    .navbar-brand .shield-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent-blue), #7c3aed);
+      border-radius: 8px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.7rem;
-      font-weight: 500;
-      color: var(--success);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
     }
-    .live-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-      animation: blink 1.4s ease-in-out infinite;
-    }
-    @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:.2 } }
 
-    /* == Buttons == */
+    .navbar-brand .version-badge {
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--accent-blue);
+      color: #0d1117;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .navbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+      overflow-x: auto;
+    }
+
+    .nav-link {
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      white-space: nowrap;
+      transition: color var(--transition), background var(--transition);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+    }
+
+    .nav-link:hover { color: var(--text-primary); background: var(--bg-card); text-decoration: none; }
+    .nav-link.active { color: var(--accent-blue); background: rgba(88, 166, 255, 0.1); }
+
+    .navbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .pipeline-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-red);
+      transition: background var(--transition);
+      flex-shrink: 0;
+    }
+
+    .status-dot.running {
+      background: var(--accent-green);
+      box-shadow: 0 0 6px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       padding: 7px 14px;
-      border-radius: var(--radius);
-      font-size: 0.75rem;
-      font-weight: 500;
-      border: 1px solid transparent;
-      cursor: pointer;
-      transition: opacity .15s, background .15s;
-    }
-    .btn:active { opacity: .7; }
-    .btn:disabled { opacity: .35; cursor: not-allowed; }
-    .btn-start { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .btn-start:hover:not(:disabled) { opacity: .88; }
-    .btn-stop { background: transparent; color: var(--danger); border-color: var(--danger); }
-    .btn-stop:hover:not(:disabled) { background: #fef2f2; }
-    @keyframes spin { to { transform: rotate(360deg) } }
-    .spin { display: inline-block; animation: spin .7s linear infinite; }
-
-    /* == KPI == */
-    .kpi-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: var(--gap);
-      margin-bottom: var(--gap);
-    }
-    .kpi {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-    }
-    .kpi-label {
-      font-size: 0.68rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .kpi-value {
-      font-size: 1.75rem;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 600;
-      letter-spacing: -0.03em;
-      line-height: 1;
-    }
-    .kpi-value.blue   { color: var(--accent); }
-    .kpi-value.red    { color: var(--danger); }
-    .kpi-value.green  { color: var(--success); }
-    .kpi-value.purple { color: #7c3aed; }
-    .kpi-value.cyan   { color: #0891b2; }
-    .kpi-value.amber  { color: var(--warn); }
-    .kpi-sub { font-size: 0.68rem; color: var(--muted); margin-top: 5px; }
-    @keyframes kpibump { 0%,100% { transform:scale(1) } 50% { transform:scale(1.06) } }
-    .bump { animation: kpibump .25s ease; }
-
-    /* == Grids == */
-    .grid-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 320px;
-      gap: var(--gap);
-      margin-bottom: var(--gap);
-    }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--gap);
-      margin-bottom: var(--gap);
+      cursor: pointer;
+      border: 1px solid transparent;
+      font-family: inherit;
+      transition: all var(--transition);
+      white-space: nowrap;
     }
 
-    /* == Card == */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
+    .btn-primary {
+      background: var(--accent-blue);
+      color: #0d1117;
+      border-color: var(--accent-blue);
+    }
+    .btn-primary:hover { background: #79b8ff; border-color: #79b8ff; }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--accent-red);
+      border-color: var(--accent-red);
+    }
+    .btn-danger:hover { background: rgba(248, 81, 73, 0.1); }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { color: var(--text-primary); border-color: #484f58; }
+
+    /* ===================== TOAST ===================== */
+    .toast-container {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      padding: 12px 18px;
       border-radius: var(--radius);
-      overflow: hidden;
+      border: 1px solid;
+      font-size: 13px;
+      font-weight: 500;
+      max-width: 320px;
+      animation: slideIn 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .card-header {
+
+    .toast.success {
+      background: rgba(63, 185, 80, 0.15);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .toast.error {
+      background: rgba(248, 81, 73, 0.15);
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .toast.info {
+      background: rgba(88, 166, 255, 0.15);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+
+    /* ===================== MAIN LAYOUT ===================== */
+    .main-content {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* ===================== SECTION HEADERS ===================== */
+    .section {
+      margin-bottom: 36px;
+      scroll-margin-top: 72px;
+    }
+
+    .section-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 13px 16px 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
     }
-    .card-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
-    }
-    .card-badge {
-      font-size: 0.67rem;
-      font-weight: 500;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: #f4f4f5;
-      color: var(--muted);
-      border: 1px solid var(--border);
-    }
-    .card-body { padding: 16px; }
-    .chart-wrap { position: relative; height: 200px; }
 
-    /* == Kafka flow == */
-    .kafka-flow {
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 24px 32px;
-      gap: 0;
-      overflow-x: auto;
+      gap: 8px;
     }
-    .kf-node { text-align: center; flex-shrink: 0; }
-    .kf-node .kf-label { font-size: 0.8rem; font-weight: 600; color: var(--text); }
-    .kf-node .kf-sub   { font-size: 0.67rem; color: var(--muted); margin-top: 3px; }
-    .kf-icon {
-      width: 48px; height: 48px;
-      border-radius: 50%;
-      border: 1px solid var(--border);
-      background: var(--bg);
+
+    .section-title .section-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 8px;
+      font-size: 14px;
     }
-    .kf-icon svg { width: 20px; height: 20px; stroke: var(--muted); fill: none; stroke-width: 1.5; }
-    .kf-kafka .kf-icon  { width: 64px; height: 64px; border-color: var(--accent); background: #eff6ff; }
-    .kf-kafka .kf-icon svg { stroke: var(--accent); }
-    .kf-kafka .kf-label { color: var(--accent); }
-    .kf-line {
-      flex: 1;
+
+    .section-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .refresh-badge {
+      font-size: 11px;
+      color: var(--text-secondary);
       display: flex;
-      flex-direction: column;
       align-items: center;
       gap: 4px;
-      min-width: 60px;
-      position: relative;
-    }
-    .kf-line::before {
-      content: '';
-      width: 100%; height: 1px;
-      background: var(--border);
-      position: absolute;
-      top: 50%; left: 0;
-    }
-    .kf-rate {
-      position: relative;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 3px 8px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
-      color: var(--text);
     }
 
-    /* == Container list == */
-    .container-list { display: flex; flex-direction: column; gap: 7px; }
-    .ctr-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      background: var(--bg);
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-    }
-    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .dot.up  { background: var(--success); }
-    .dot.dn  { background: var(--danger); }
-    .ctr-name   { font-size: 0.76rem; font-weight: 500; flex: 1; }
-    .ctr-ports  { font-size: 0.63rem; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
-    .ctr-status { font-size: 0.63rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
-
-    /* == Feed == */
-    .feed-wrap { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-    .feed-wrap::-webkit-scrollbar { width: 3px; }
-    .feed-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .feed-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      background: var(--bg);
-      border-radius: 6px;
-      border-left: 2px solid transparent;
-      font-size: 0.73rem;
-      animation: slideIn .2s ease;
-    }
-    @keyframes slideIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
-    .feed-item.legit { border-left-color: var(--success); }
-    .feed-item.FRAUD { border-left-color: var(--danger); background: #fef2f2; }
-    .fbadge {
-      font-size: 0.6rem;
-      font-weight: 600;
-      padding: 1px 6px;
-      border-radius: 3px;
-      text-transform: uppercase;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .fbadge.legit { background: #dcfce7; color: var(--success); }
-    .fbadge.FRAUD { background: #fee2e2; color: var(--danger); }
-    .ftid {
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--muted);
-      font-size: 0.65rem;
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .famt { font-weight: 600; white-space: nowrap; }
-
-    /* == ML metrics == */
-    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .mitem {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px;
-      text-align: center;
-    }
-    .mitem .mv { font-size: 1.3rem; font-weight: 600; letter-spacing: -0.02em; }
-    .mitem .ml { font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 4px; }
-    .mitem.auc   .mv { color: var(--accent); }
-    .mitem.f1    .mv { color: var(--success); }
-    .mitem.catch .mv { color: #7c3aed; }
-    .mitem.alarm .mv { color: var(--warn); }
-
-    /* == Confusion matrix == */
-    .cm { margin-top: 14px; }
-    .cm-title { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 8px; }
-    .cm-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 3px; font-size: 0.68rem; }
-    .cm-cell { padding: 8px 6px; border-radius: 6px; text-align: center; font-weight: 600; }
-    .cm-hdr  { color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; }
-    .cm-lbl  { color: var(--muted); font-size: 0.6rem; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
-    .cm-tp   { background: #dcfce7; color: var(--success); }
-    .cm-tn   { background: #eff6ff; color: var(--accent); }
-    .cm-fp   { background: #fee2e2; color: var(--danger); }
-    .cm-fn   { background: #fef3c7; color: var(--warn); }
-
-    /* == Features == */
-    .feat-list { display: flex; flex-direction: column; gap: 7px; }
-    .feat-row  { display: flex; align-items: center; gap: 8px; }
-    .feat-name { font-size: 0.69rem; width: 150px; flex-shrink: 0; color: var(--muted); }
-    .feat-bar-wrap { flex: 1; background: #f4f4f5; border-radius: 999px; height: 5px; }
-    .feat-bar  { height: 100%; border-radius: 999px; background: var(--accent); transition: width .7s ease; }
-    .feat-pct  { font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); width: 32px; text-align: right; }
-
-    /* == Donut == */
-    .donut-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
-    .donut-center { position: absolute; text-align: center; pointer-events: none; }
-    .donut-center .dv { font-size: 1.3rem; font-weight: 600; color: var(--danger); }
-    .donut-center .dl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .stat-mini { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; text-align: center; }
-    .stat-mini .sv { font-size: 1.1rem; font-weight: 600; }
-    .stat-mini .sl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
-
-    /* == Logs == */
-    .log-box {
-      background: #18181b;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      height: 200px;
-      overflow-y: auto;
-      padding: 10px 12px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.67rem;
-      line-height: 1.6;
-    }
-    .log-box::-webkit-scrollbar { width: 3px; }
-    .log-box::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-    .ll { color: #a1a1aa; white-space: pre-wrap; word-break: break-all; }
-    .ll.fraud { color: #f87171; font-weight: 600; }
-    .ll.legit { color: #4ade80; }
-    .ll.info  { color: #60a5fa; }
-    .ll.warn  { color: #fbbf24; }
-
-    /* == Table == */
-    .ftbl-wrap { overflow-x: auto; max-height: 260px; overflow-y: auto; }
-    .ftbl-wrap::-webkit-scrollbar { height: 3px; width: 3px; }
-    .ftbl-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
-    th {
-      position: sticky; top: 0;
-      background: var(--surface);
-      padding: 8px 10px;
-      text-align: left;
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border);
-      font-weight: 500;
-    }
-    td {
-      padding: 7px 10px;
-      border-bottom: 1px solid #f4f4f5;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.69rem;
-    }
-    tr:hover td { background: #f9fafb; }
-    .td-fraud { color: var(--danger); font-weight: 600; }
-    .td-legit { color: var(--success); }
-    .td-amt   { color: var(--text); font-weight: 500; }
-
-    /* == Bar == */
-    .bar-track { background: #f4f4f5; border-radius: 999px; height: 6px; overflow: hidden; }
-    .bar-fill  { height: 100%; border-radius: 999px; transition: width .5s ease; }
-
-    /* == Toast == */
-    #toast {
-      position: fixed;
-      bottom: 20px; right: 20px;
-      z-index: 9999;
-      padding: 10px 18px;
-      border-radius: var(--radius);
-      font-size: 0.78rem;
-      font-weight: 500;
-      display: none;
-      border: 1px solid transparent;
-    }
-    @keyframes toastIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
-    #toast.show    { display: block; animation: toastIn .2s ease; }
-    #toast.success { background: #f0fdf4; border-color: #bbf7d0; color: var(--success); }
-    #toast.error   { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
-    #toast.info    { background: #eff6ff; border-color: #bfdbfe; color: var(--accent); }
-
-    @media (max-width: 1100px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 760px)  { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
-
-    /* == Clickable metric cards == */
-    .kpi[data-metric], .mitem[data-metric] {
-      cursor: pointer;
-      position: relative;
-    }
-    .kpi[data-metric]:hover, .mitem[data-metric]:hover {
-      border-color: #d4d4d8;
-      background: #fafafa;
-    }
-    .kpi[data-metric]::after, .mitem[data-metric]::after {
-      content: '?';
-      position: absolute;
-      top: 8px; right: 10px;
-      font-size: 0.6rem;
-      font-weight: 600;
-      color: var(--muted);
-      width: 14px; height: 14px;
+    .refresh-badge .dot {
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      line-height: 14px;
-      text-align: center;
+      background: var(--accent-green);
+      animation: pulse 2s infinite;
     }
 
-    /* == Explanation modal == */
-    .modal-backdrop {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.35);
-      z-index: 1000;
-      display: none;
-      align-items: center;
-      justify-content: center;
+    /* ===================== CARDS ===================== */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       padding: 20px;
+      transition: background var(--transition), border-color var(--transition);
     }
-    .modal-backdrop.open { display: flex; animation: fadein .15s ease; }
-    @keyframes fadein { from { opacity:0 } to { opacity:1 } }
 
-    .modal {
-      background: var(--surface);
+    .card:hover { background: var(--bg-card-hover); }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    /* ===================== STATS GRID ===================== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      width: 100%;
-      max-width: 480px;
-      box-shadow: 0 8px 32px rgba(0,0,0,.12);
-      animation: slideup .18s ease;
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all var(--transition);
     }
-    @keyframes slideup { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
 
-    .modal-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      padding: 20px 20px 0;
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .stat-card.blue::before { background: var(--accent-blue); }
+    .stat-card.red::before { background: var(--accent-red); }
+    .stat-card.green::before { background: var(--accent-green); }
+    .stat-card.yellow::before { background: var(--accent-yellow); }
+
+    .stat-card:hover { background: var(--bg-card-hover); transform: translateY(-2px); }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+      letter-spacing: -1px;
+    }
+
+    .stat-value.blue { color: var(--accent-blue); }
+    .stat-value.red { color: var(--accent-red); }
+    .stat-value.green { color: var(--accent-green); }
+    .stat-value.yellow { color: var(--accent-yellow); }
+
+    .stat-meta {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .stat-icon {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 24px;
+      opacity: 0.3;
+    }
+
+    /* ===================== CONTAINER HEALTH ===================== */
+    .container-health-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 12px;
     }
-    .modal-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
+
+    .container-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all var(--transition);
     }
-    .modal-close {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--muted);
-      font-size: 1.1rem;
-      line-height: 1;
-      padding: 2px 4px;
-      border-radius: 4px;
+
+    .container-card:hover { background: var(--bg-card-hover); }
+
+    .container-status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
       flex-shrink: 0;
     }
-    .modal-close:hover { background: #f4f4f5; color: var(--text); }
 
-    .modal-score {
-      font-size: 2rem;
+    .container-status-dot.up {
+      background: var(--accent-green);
+      box-shadow: 0 0 6px var(--accent-green);
+    }
+
+    .container-status-dot.down {
+      background: var(--accent-red);
+    }
+
+    .container-info { flex: 1; min-width: 0; }
+
+    .container-name {
+      font-size: 13px;
       font-weight: 600;
-      letter-spacing: -0.04em;
-      padding: 12px 20px 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .modal-score.blue   { color: var(--accent); }
-    .modal-score.red    { color: var(--danger); }
-    .modal-score.green  { color: var(--success); }
-    .modal-score.purple { color: #7c3aed; }
-    .modal-score.cyan   { color: #0891b2; }
-    .modal-score.amber  { color: var(--warn); }
 
-    .modal-body {
-      padding: 8px 20px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+    .container-status-text {
+      font-size: 11px;
+      color: var(--text-secondary);
     }
-    .modal-section-title {
-      font-size: 0.67rem;
+
+    .container-status-text.up { color: var(--accent-green); }
+    .container-status-text.down { color: var(--accent-red); }
+
+    /* ===================== ALERT BANNER ===================== */
+    .alert-banner {
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      border: 1px solid;
+      margin-bottom: 16px;
+      font-size: 13px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .alert-banner.warning {
+      background: rgba(210, 153, 34, 0.1);
+      border-color: var(--accent-yellow);
+      color: var(--accent-yellow);
+    }
+
+    .alert-banner.info {
+      background: rgba(88, 166, 255, 0.1);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .alert-banner code {
+      background: rgba(255,255,255,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    /* ===================== MODEL PERFORMANCE ===================== */
+    .models-layout {
+      display: grid;
+      gap: 20px;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: var(--radius-lg);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      background: rgba(48, 54, 61, 0.5);
+      color: var(--text-secondary);
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-    .modal-text {
-      font-size: 0.82rem;
-      line-height: 1.6;
-      color: var(--text);
-    }
-    .modal-verdict {
-      background: #f4f4f5;
-      border-radius: var(--radius);
+      letter-spacing: 0.8px;
       padding: 10px 14px;
-      font-size: 0.8rem;
-      line-height: 1.55;
-      color: var(--text);
-      border-left: 3px solid var(--accent);
+      text-align: left;
+      white-space: nowrap;
+      position: relative;
     }
-    .modal-verdict.good  { border-left-color: var(--success); background: #f0fdf4; }
-    .modal-verdict.warn  { border-left-color: var(--warn);    background: #fffbeb; }
-    .modal-verdict.info  { border-left-color: var(--accent);  background: #eff6ff; }
 
-    /* == Model Comparison == */
-    .model-toggle-group {
-      display: inline-flex;
-      background: var(--bg);
-      padding: 3px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      gap: 3px;
-    }
-    .model-tab-btn {
-      border: none;
-      background: transparent;
-      padding: 4px 12px;
-      font-size: 0.7rem;
-      font-weight: 500;
-      border-radius: 5px;
+    th.sortable {
       cursor: pointer;
-      color: var(--muted);
-      transition: all .15s ease;
+      user-select: none;
     }
-    .model-tab-btn:hover { color: var(--text); }
-    .model-tab-btn.active {
-      background: var(--surface);
-      color: var(--text);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+
+    th.sortable:hover { color: var(--text-primary); }
+
+    th.sorted-asc::after { content: ' ↑'; color: var(--accent-blue); }
+    th.sorted-desc::after { content: ' ↓'; color: var(--accent-blue); }
+
+    td {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    tr:hover td { background: rgba(255,255,255,0.03); }
+
+    .best-value {
+      background: rgba(255, 215, 0, 0.12) !important;
+      color: var(--accent-gold) !important;
+      font-weight: 700;
+      border-radius: 4px;
+      padding: 2px 8px !important;
+    }
+
+    /* ===================== CONFUSION MATRIX ===================== */
+    .confusion-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .confusion-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+    }
+
+    .confusion-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .confusion-matrix {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .cm-cell {
+      padding: 14px 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .cm-cell .cm-value {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .cm-cell .cm-label {
+      font-size: 10px;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+      opacity: 0.75;
     }
-    .model-badge-tag {
-      display: inline-block;
+
+    .cm-tp { background: rgba(63, 185, 80, 0.2); border: 1px solid rgba(63, 185, 80, 0.3); }
+    .cm-tp .cm-value { color: var(--accent-green); }
+
+    .cm-fp { background: rgba(248, 81, 73, 0.15); border: 1px solid rgba(248, 81, 73, 0.3); }
+    .cm-fp .cm-value { color: var(--accent-red); }
+
+    .cm-fn { background: rgba(210, 153, 34, 0.15); border: 1px solid rgba(210, 153, 34, 0.3); }
+    .cm-fn .cm-value { color: var(--accent-yellow); }
+
+    .cm-tn { background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); }
+    .cm-tn .cm-value { color: var(--accent-blue); }
+
+    /* ===================== CHARTS ROW ===================== */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .charts-row { grid-template-columns: 1fr; }
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .chart-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 280px;
+    }
+
+    /* ===================== LIVE TRANSACTIONS ===================== */
+    .transactions-table-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .transactions-table-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .transactions-table-header .title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .record-count {
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.05);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .transactions-scroll {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .tx-row-fraud td { background: rgba(248, 81, 73, 0.07) !important; }
+    .tx-row-legit td { background: rgba(63, 185, 80, 0.04) !important; }
+    .tx-row-disagree td { background: rgba(210, 153, 34, 0.08) !important; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
       padding: 2px 7px;
       border-radius: 4px;
-      font-size: 0.62rem;
-      font-weight: 600;
       text-transform: uppercase;
-      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.5px;
     }
-    .tag-rf { background: #eff6ff; color: var(--accent); border: 1px solid #bfdbfe; }
-    .tag-xgb { background: #faf5ff; color: #7c3aed; border: 1px solid #ddd6fe; }
-    .comp-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
-    .comp-table th { background: var(--bg); padding: 9px 14px; font-size: 0.64rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left; }
-    .comp-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; }
-    .comp-table tr:last-child td { border-bottom: none; }
-    .comp-winner { color: var(--success); font-weight: 600; }
+
+    .badge-fraud { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); border: 1px solid rgba(248, 81, 73, 0.4); }
+    .badge-ok { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); border: 1px solid rgba(63, 185, 80, 0.3); }
+    .badge-lr { color: var(--lr-color); }
+    .badge-rf { color: var(--rf-color); }
+    .badge-xgb { color: var(--xgb-color); }
+
+    .empty-state {
+      padding: 48px 20px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-state .empty-text { font-size: 14px; font-weight: 500; }
+    .empty-state .empty-sub { font-size: 12px; margin-top: 4px; opacity: 0.6; }
+
+    /* ===================== AGREEMENT SECTION ===================== */
+    .agreement-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .agreement-layout { grid-template-columns: 1fr; }
+    }
+
+    .donut-wrapper {
+      position: relative;
+      height: 280px;
+    }
+
+    .agreement-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-label { flex: 1; color: var(--text-secondary); }
+    .legend-value { font-weight: 700; color: var(--text-primary); }
+
+    /* ===================== LEADERBOARD ===================== */
+    .rank-medal { font-size: 16px; }
+
+    .model-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .model-pill.lr { background: rgba(79, 123, 223, 0.15); color: var(--lr-color); border: 1px solid rgba(79, 123, 223, 0.3); }
+    .model-pill.rf { background: rgba(46, 204, 113, 0.12); color: var(--rf-color); border: 1px solid rgba(46, 204, 113, 0.3); }
+    .model-pill.xgb { background: rgba(231, 76, 60, 0.12); color: var(--xgb-color); border: 1px solid rgba(231, 76, 60, 0.3); }
+
+    .best-metric-icon { font-size: 14px; }
+
+    /* ===================== FOOTER DISCLAIMER ===================== */
+    .disclaimer {
+      margin-top: 24px;
+      padding: 14px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ===================== LOADING SPINNER ===================== */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-cell {
+      text-align: center;
+      padding: 32px;
+      color: var(--text-secondary);
+    }
+
+    /* ===================== RESPONSIVE ===================== */
+    @media (max-width: 768px) {
+      .navbar { padding: 0 12px; gap: 12px; }
+      .navbar-nav { display: none; }
+      .main-content { padding: 16px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-row { grid-template-columns: 1fr; }
+      .confusion-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-<div class="wrapper">
 
-  <header>
-    <div class="logo">
-      <h1>Fraud<span>Shield</span></h1>
-      <p>Kafka + Spark ML Pipeline &mdash; Real-time Monitor</p>
-    </div>
-    <div class="header-right">
-      <span id="last-updated">Connecting...</span>
-      <button class="btn btn-start" id="btn-start" onclick="pipelineAction('start')">Start Pipeline</button>
-      <button class="btn btn-stop"  id="btn-stop"  onclick="pipelineAction('stop')">Stop Pipeline</button>
-      <div class="live-badge"><div class="live-dot"></div>Live</div>
-    </div>
-  </header>
+<!-- ==================== TOAST CONTAINER ==================== -->
+<div class="toast-container" id="toastContainer"></div>
 
-  <!-- KPI Row -->
-  <div class="kpi-row">
-    <div class="kpi" data-metric="total_seen"><div class="kpi-label">Transactions Seen</div><div class="kpi-value blue" id="kpi-total">0</div><div class="kpi-sub">cumulative this session</div></div>
-    <div class="kpi" data-metric="fraud_detected"><div class="kpi-label">Fraud Detected</div><div class="kpi-value red" id="kpi-fraud">0</div><div class="kpi-sub" id="kpi-fraud-rate">0.00% fraud rate</div></div>
-    <div class="kpi" data-metric="legit_txns"><div class="kpi-label">Legit Transactions</div><div class="kpi-value green" id="kpi-legit">0</div><div class="kpi-sub">passed ML scoring</div></div>
-    <div class="kpi" data-metric="auc_roc"><div class="kpi-label">AUC-ROC Score</div><div class="kpi-value purple" id="kpi-auc">&mdash;</div><div class="kpi-sub" id="kpi-auc-sub">Random Forest model</div></div>
-    <div class="kpi" data-metric="f1_score"><div class="kpi-label">F1 Score</div><div class="kpi-value cyan" id="kpi-f1">&mdash;</div><div class="kpi-sub">weighted average</div></div>
-    <div class="kpi" data-metric="catch_rate"><div class="kpi-label">Fraud Catch Rate</div><div class="kpi-value amber" id="kpi-catch">&mdash;</div><div class="kpi-sub">true positive rate</div></div>
+<!-- ==================== NAVIGATION ==================== -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="shield-icon">🛡️</div>
+    <span>FraudShield</span>
+    <span class="version-badge">2.0</span>
   </div>
 
-  <!-- Kafka Data Flow -->
-  <div class="card" style="margin-bottom:var(--gap)">
-    <div class="card-header">
-      <div class="card-title">Kafka Data Flow</div>
-      <div class="card-badge">topic: transactions</div>
+  <nav class="navbar-nav" role="navigation">
+    <button class="nav-link active" onclick="scrollToSection('overview')">📊 Overview</button>
+    <button class="nav-link" onclick="scrollToSection('model-performance')">🤖 Model Performance</button>
+    <button class="nav-link" onclick="scrollToSection('live-transactions')">⚡ Live Transactions</button>
+    <button class="nav-link" onclick="scrollToSection('agreement')">🔍 Agreement Analysis</button>
+    <button class="nav-link" onclick="scrollToSection('leaderboard')">🏆 Leaderboard</button>
+  </nav>
+
+  <div class="navbar-controls">
+    <div class="pipeline-status" id="pipelineStatus">
+      <div class="status-dot" id="pipelineStatusDot"></div>
+      <span id="pipelineStatusText">Checking...</span>
     </div>
-    <div class="kafka-flow">
-      <div class="kf-node">
-        <div class="kf-icon">
-          <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" stroke="currentColor" fill="none"/></svg>
-        </div>
-        <div class="kf-label">Producer</div>
-        <div class="kf-sub">Python Faker</div>
-      </div>
-      <div class="kf-line">
-        <span class="kf-rate"><span id="kafka-in-rate">0</span> msg/s</span>
-      </div>
-      <div class="kf-node kf-kafka">
-        <div class="kf-icon">
-          <svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="9" y="16" width="6" height="6" rx="1"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><line x1="12" y1="8" x2="5" y2="12"/><line x1="12" y1="8" x2="19" y2="12"/><line x1="12" y1="16" x2="5" y2="12"/><line x1="12" y1="16" x2="19" y2="12"/></svg>
-        </div>
-        <div class="kf-label">KAFKA</div>
-        <div class="kf-sub">broker</div>
-      </div>
-      <div class="kf-line">
-        <span class="kf-rate"><span id="kafka-out-rate">0</span> msg/s</span>
-      </div>
-      <div class="kf-node">
-        <div class="kf-icon">
-          <svg viewBox="0 0 24 24"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
-        </div>
-        <div class="kf-label">Consumer</div>
-        <div class="kf-sub">Spark Streaming</div>
-      </div>
-    </div>
+    <button class="btn btn-primary" id="btnStart" onclick="startPipeline()">▶ Start</button>
+    <button class="btn btn-danger" id="btnStop" onclick="stopPipeline()">⏹ Stop</button>
+    <button class="btn btn-secondary" onclick="replayPipeline()">↺ Replay</button>
   </div>
+</nav>
 
-  <!-- Stream + Distribution + Containers -->
-  <div class="grid-3">
+<!-- ==================== MAIN CONTENT ==================== -->
+<main class="main-content">
+
+  <!-- ==================== SECTION B: OVERVIEW ==================== -->
+  <section class="section" id="overview">
+    <div class="section-header">
+      <div>
+        <div class="section-title">
+          <div class="section-icon" style="background: rgba(88,166,255,0.15);">📊</div>
+          Overview Dashboard
+        </div>
+        <div class="section-subtitle">Real-time transaction metrics and system health</div>
+      </div>
+      <div class="refresh-badge"><div class="dot"></div> Auto-refresh every 5s</div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card blue">
+        <div class="stat-icon">💳</div>
+        <div class="stat-label">Total Transactions</div>
+        <div class="stat-value blue" id="statTotal">—</div>
+        <div class="stat-meta">Processed through pipeline</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-icon">🚨</div>
+        <div class="stat-label">Fraud Detected</div>
+        <div class="stat-value red" id="statFraud">—</div>
+        <div class="stat-meta">Flagged transactions</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Legitimate</div>
+        <div class="stat-value green" id="statLegit">—</div>
+        <div class="stat-meta">Clean transactions</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-icon">📈</div>
+        <div class="stat-label">Fraud Rate</div>
+        <div class="stat-value yellow" id="statFraudRate">—</div>
+        <div class="stat-meta">% of all transactions</div>
+      </div>
+    </div>
+
+    <!-- Container Health -->
     <div class="card">
-      <div class="card-header">
-        <div class="card-title">Transaction Stream</div>
-        <div class="card-badge" id="rate-badge">10 tx/s</div>
+      <div class="card-title">Container Health</div>
+      <div class="container-health-grid" id="containerGrid">
+        <div style="color: var(--text-secondary); font-size: 13px; padding: 10px 0;">
+          <span class="spinner"></span> Loading container statuses…
+        </div>
       </div>
-      <div class="card-body"><div class="chart-wrap"><canvas id="streamChart"></canvas></div></div>
     </div>
+  </section>
 
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Fraud vs Legit Distribution</div>
-        <div class="card-badge">Live</div>
-      </div>
-      <div class="card-body" style="display:flex;align-items:center;gap:20px">
-        <div class="donut-wrap" style="width:150px;height:150px;flex-shrink:0">
-          <canvas id="doughnutChart" width="150" height="150"></canvas>
-          <div class="donut-center"><div class="dv" id="donut-pct">0%</div><div class="dl">fraud rate</div></div>
+  <!-- ==================== SECTION C: MODEL PERFORMANCE ==================== -->
+  <section class="section" id="model-performance">
+    <div class="section-header">
+      <div>
+        <div class="section-title">
+          <div class="section-icon" style="background: rgba(63,185,80,0.15);">🤖</div>
+          3-Model Performance Comparison
         </div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:10px">
-          <div>
-            <div style="font-size:.63rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Fraud Rate</div>
-            <div class="bar-track"><div id="fraud-bar" class="bar-fill" style="width:0%;background:var(--danger)"></div></div>
-            <div style="font-size:.63rem;color:var(--danger);margin-top:3px" id="fraud-bar-lbl">0%</div>
-          </div>
-          <div>
-            <div style="font-size:.63rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Legit Rate</div>
-            <div class="bar-track"><div id="legit-bar" class="bar-fill" style="width:100%;background:var(--success)"></div></div>
-            <div style="font-size:.63rem;color:var(--success);margin-top:3px" id="legit-bar-lbl">100%</div>
-          </div>
-          <div style="display:flex;gap:6px">
-            <div class="stat-mini"><div class="sv" style="color:var(--danger)" id="stat-fraud">0</div><div class="sl">Fraud</div></div>
-            <div class="stat-mini"><div class="sv" style="color:var(--success)" id="stat-legit">0</div><div class="sl">Legit</div></div>
-          </div>
-        </div>
+        <div class="section-subtitle">Linear Regression vs Random Forest vs XGBoost</div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Container Health</div>
-        <div class="card-badge" id="containers-badge">Checking...</div>
+    <div id="modelComparisonContent">
+      <div class="card" style="text-align:center; padding: 40px;">
+        <span class="spinner"></span>
+        <div style="color: var(--text-secondary); margin-top: 10px;">Loading model metrics…</div>
       </div>
-      <div class="card-body">
-        <div class="container-list" id="container-list">
-          <div style="color:var(--muted);font-size:.78rem">Loading...</div>
+    </div>
+  </section>
+
+  <!-- ==================== SECTION D: LIVE TRANSACTIONS ==================== -->
+  <section class="section" id="live-transactions">
+    <div class="section-header">
+      <div>
+        <div class="section-title">
+          <div class="section-icon" style="background: rgba(248,81,73,0.15);">⚡</div>
+          Live Transaction Monitoring
+        </div>
+        <div class="section-subtitle">Last 100 transactions from Kafka stream</div>
+      </div>
+      <div class="refresh-badge"><div class="dot"></div> Auto-refresh every 5s</div>
+    </div>
+
+    <div class="transactions-table-wrapper">
+      <div class="transactions-table-header">
+        <span class="title">Transaction Feed</span>
+        <span class="record-count" id="txCount">0 records</span>
+      </div>
+      <div class="transactions-scroll">
+        <div class="table-responsive">
+          <table id="txTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Time</th>
+                <th>Amount</th>
+                <th>Merchant</th>
+                <th>Actual</th>
+                <th style="color: var(--lr-color);">LR</th>
+                <th style="color: var(--rf-color);">RF</th>
+                <th style="color: var(--xgb-color);">XGB</th>
+              </tr>
+            </thead>
+            <tbody id="txBody">
+              <tr>
+                <td colspan="8" class="loading-cell">
+                  <span class="spinner"></span>
+                  <div style="margin-top: 8px;">Loading transaction stream…</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ML Metrics + Feature Importance -->
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">ML Model Metrics</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <div class="model-toggle-group">
-            <button class="model-tab-btn active" id="tab-rf" onclick="switchModelView('rf')">Random Forest</button>
-            <button class="model-tab-btn" id="tab-xgb" onclick="switchModelView('xgb')">XGBoost</button>
+  <!-- ==================== SECTION E: AGREEMENT ANALYSIS ==================== -->
+  <section class="section" id="agreement">
+    <div class="section-header">
+      <div>
+        <div class="section-title">
+          <div class="section-icon" style="background: rgba(210,153,34,0.15);">🔍</div>
+          Model Agreement Analysis
+        </div>
+        <div class="section-subtitle">How often do the three models agree on fraud classification?</div>
+      </div>
+      <div class="refresh-badge"><div class="dot"></div> Auto-refresh every 5s</div>
+    </div>
+
+    <div class="agreement-layout">
+      <div class="chart-card">
+        <div class="chart-card-title">Agreement Distribution</div>
+        <div class="donut-wrapper">
+          <canvas id="agreementChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Breakdown</div>
+        <div class="agreement-legend" id="agreementLegend">
+          <div style="color: var(--text-secondary); font-size: 13px;">
+            <span class="spinner"></span> Loading agreement data…
           </div>
-          <div class="card-badge" id="model-desc-badge">Random Forest &middot; 100 trees &middot; depth 10</div>
         </div>
       </div>
-      <div class="card-body">
-        <div class="metric-grid">
-          <div class="mitem auc"   data-metric="auc_roc">  <div class="mv" id="m-auc-roc">&mdash;</div><div class="ml">AUC-ROC</div></div>
-          <div class="mitem f1"    data-metric="f1_score">  <div class="mv" id="m-f1">&mdash;</div><div class="ml">F1 Score</div></div>
-          <div class="mitem catch" data-metric="catch_rate"><div class="mv" id="m-catch">&mdash;</div><div class="ml">Fraud Catch Rate</div></div>
-          <div class="mitem alarm" data-metric="false_alarm"><div class="mv" id="m-alarm">&mdash;</div><div class="ml">False Alarm Rate</div></div>
+    </div>
+  </section>
+
+  <!-- ==================== SECTION F: LEADERBOARD ==================== -->
+  <section class="section" id="leaderboard">
+    <div class="section-header">
+      <div>
+        <div class="section-title">
+          <div class="section-icon" style="background: rgba(255,215,0,0.15);">🏆</div>
+          Dynamic Model Leaderboard
         </div>
-        <div class="cm">
-          <div class="cm-title" id="cm-title">Confusion Matrix (test set &middot; Random Forest)</div>
-          <div class="cm-grid">
-            <div></div>
-            <div class="cm-hdr">Pred: Legit</div>
-            <div class="cm-hdr">Pred: Fraud</div>
-            <div class="cm-lbl">Act: Legit</div>
-            <div class="cm-cell cm-tn"><div id="cm-tn" style="font-size:.95rem">~43k</div><div style="font-size:.56rem;color:var(--muted)">True Neg</div></div>
-            <div class="cm-cell cm-fp"><div id="cm-fp" style="font-size:.95rem">1</div><div style="font-size:.56rem;color:var(--muted)">False Alarm</div></div>
-            <div class="cm-lbl">Act: Fraud</div>
-            <div class="cm-cell cm-fn"><div id="cm-fn" style="font-size:.95rem">114</div><div style="font-size:.56rem;color:var(--muted)">Missed</div></div>
-            <div class="cm-cell cm-tp"><div id="cm-tp" style="font-size:.95rem">793</div><div style="font-size:.56rem;color:var(--muted)">True Fraud</div></div>
-          </div>
-        </div>
+        <div class="section-subtitle">Click any column header to sort</div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Feature Importance &amp; Benchmark</div>
-        <div class="card-badge" id="feat-badge">RF Gini Impurity</div>
-      </div>
-      <div class="card-body">
-        <div class="feat-list" id="feat-list"></div>
-        <div style="margin-top:14px"><div class="chart-wrap" style="height:130px"><canvas id="aucChart"></canvas></div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Model Comparison Matrix -->
-  <div class="card" style="margin-bottom:var(--gap)">
-    <div class="card-header">
-      <div class="card-title">Model Comparison Matrix: Random Forest vs. XGBoost</div>
-      <div class="card-badge">Head-to-Head Benchmark</div>
-    </div>
-    <div class="card-body" style="padding:0">
-      <div class="ftbl-wrap">
-        <table class="comp-table">
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="table-responsive">
+        <table id="leaderboardTable">
           <thead>
             <tr>
-              <th>Evaluation Metric / Dimension</th>
-              <th>Random Forest (Spark MLlib)</th>
-              <th>XGBoost Classifier</th>
-              <th>Benchmark Insight</th>
+              <th>Rank</th>
+              <th class="sortable" data-col="model" onclick="sortLeaderboard('model')">Model</th>
+              <th class="sortable" data-col="recall" onclick="sortLeaderboard('recall')">Recall</th>
+              <th class="sortable" data-col="precision" onclick="sortLeaderboard('precision')">Precision</th>
+              <th class="sortable sorted-desc" data-col="f1" onclick="sortLeaderboard('f1')">F1 Score</th>
+              <th class="sortable" data-col="pr_auc" onclick="sortLeaderboard('pr_auc')">PR-AUC</th>
+              <th class="sortable" data-col="roc_auc" onclick="sortLeaderboard('roc_auc')">ROC-AUC</th>
+              <th class="sortable" data-col="train_time" onclick="sortLeaderboard('train_time')">Train Time</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="leaderboardBody">
             <tr>
-              <td><strong>Architecture</strong></td>
-              <td>Ensemble Bagging (100 parallel trees)</td>
-              <td>Gradient Boosting (100 sequential trees)</td>
-              <td><span class="model-badge-tag tag-rf">Spark Cluster</span> vs <span class="model-badge-tag tag-xgb">Real-Time Worker</span></td>
-            </tr>
-            <tr>
-              <td><strong>AUC-ROC</strong></td>
-              <td><span id="cmp-rf-auc">0.9821</span></td>
-              <td><span id="cmp-xgb-auc" style="color:var(--success);font-weight:600">0.9902</span></td>
-              <td><span class="comp-winner">&#10003; XGBoost (+0.0081 higher discriminability)</span></td>
-            </tr>
-            <tr>
-              <td><strong>AUC-PR (Precision-Recall)</strong></td>
-              <td><span id="cmp-rf-pr">0.7634</span></td>
-              <td><span id="cmp-xgb-pr" style="color:var(--success);font-weight:600">0.6501</span></td>
-              <td><span class="comp-winner">&#10003; Robust PR curve on 0.38% real fraud</span></td>
-            </tr>
-            <tr>
-              <td><strong>F1 Score</strong></td>
-              <td><span id="cmp-rf-f1">0.9412</span></td>
-              <td><span id="cmp-xgb-f1" style="color:var(--accent);font-weight:600">0.3902</span></td>
-              <td><span class="comp-winner">&#10003; Real-world balance on severe imbalance</span></td>
-            </tr>
-            <tr>
-              <td><strong>Fraud Catch Rate (Recall)</strong></td>
-              <td><span id="cmp-rf-recall">87.43%</span></td>
-              <td><span id="cmp-xgb-recall" style="color:var(--success);font-weight:600">84.42%</span></td>
-              <td><span class="comp-winner">&#10003; 168 of 199 real frauds caught (84.4%)</span></td>
-            </tr>
-            <tr>
-              <td><strong>False Alarm Rate</strong></td>
-              <td><span id="cmp-rf-alarm">0.0023%</span></td>
-              <td><span id="cmp-xgb-alarm" style="color:var(--accent);font-weight:600">0.9919%</span></td>
-              <td><span class="comp-winner">&#10003; &lt; 1% false alarm rate on 50k transactions</span></td>
-            </tr>
-            <tr>
-              <td><strong>Training Latency</strong></td>
-              <td>~35.0 seconds (Spark JVM overhead)</td>
-              <td style="color:var(--success);font-weight:600">7.50 seconds</td>
-              <td><span class="comp-winner">&#10003; XGBoost trains 5x faster than Spark JVM</span></td>
-            </tr>
-            <tr>
-              <td><strong>Serving Latency</strong></td>
-              <td>Micro-batch (every 3 seconds)</td>
-              <td style="color:var(--success);font-weight:600">&lt; 1 ms per transaction</td>
-              <td><span class="comp-winner">&#10003; Event-driven sub-millisecond inference</span></td>
+              <td colspan="8" class="loading-cell">
+                <span class="spinner"></span>
+                <div style="margin-top: 8px;">Loading leaderboard…</div>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
+  </section>
+
+  <!-- ==================== DISCLAIMER ==================== -->
+  <div class="disclaimer">
+    <span>ℹ️</span>
+    <span>
+      <strong>Dataset Notice:</strong> All transaction data displayed in this dashboard is <strong>Sparkov-generated simulation data</strong>, not actual bank transactions. This system is for educational and research purposes only.
+    </span>
   </div>
 
-  <!-- Live Feed + Fraud Table -->
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Live Transaction Feed</div>
-        <div class="card-badge" id="feed-badge">0 tx</div>
-      </div>
-      <div class="card-body">
-        <div class="feed-wrap" id="live-feed">
-          <div style="color:var(--muted);font-size:.78rem">Waiting for transactions...</div>
-        </div>
-      </div>
-    </div>
+</main>
 
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">ML-Flagged Transactions</div>
-        <div class="card-badge" id="fraud-caught-badge">0 caught</div>
-      </div>
-      <div class="card-body" style="padding:0">
-        <div class="ftbl-wrap">
-          <table>
-            <thead><tr><th>Transaction ID</th><th>Amount</th><th>Category</th><th>Hour</th><th>Geo Risk</th><th>Model</th><th>Status</th></tr></thead>
-            <tbody id="fraud-tbody"><tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px">Loading...</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Logs -->
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-header"><div class="card-title">Kafka Producer Logs</div><div class="card-badge" id="producer-badge">transactions stream</div></div>
-      <div class="card-body" style="padding:10px"><div class="log-box" id="producer-log"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">ML Consumer Logs</div><div class="card-badge" id="consumer-badge">XGBoost / Spark</div></div>
-      <div class="card-body" style="padding:10px"><div class="log-box" id="consumer-log"></div></div>
-    </div>
-  </div>
-
-</div>
-
-<div id="toast"></div>
-
-<!-- Metric explanation modal -->
-<div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
-  <div class="modal" id="modal">
-    <div class="modal-head">
-      <div class="modal-title" id="modal-title">—</div>
-      <button class="modal-close" onclick="closeModalDirect()">&#x2715;</button>
-    </div>
-    <div class="modal-score" id="modal-score"></div>
-    <div class="modal-body" id="modal-body"></div>
-  </div>
-</div>
-
+<!-- ==================== JAVASCRIPT ==================== -->
 <script>
-const API = 'http://localhost:5050';
+  'use strict';
 
-const LABELS30 = Array.from({length:30},(_,i)=>`${30-i}s`).reverse();
-const sData = { legit: Array(30).fill(0), fraud: Array(30).fill(0) };
+  // ==================== CONFIGURATION ====================
+  const API_BASE = 'http://localhost:5050';
+  const REFRESH_INTERVAL_MS = 5000;
 
-const streamChart = new Chart(document.getElementById('streamChart'), {
-  type: 'line',
-  data: {
-    labels: LABELS30,
-    datasets: [
-      { label:'Legit', data:[...sData.legit], borderColor:'#16a34a', backgroundColor:'rgba(22,163,74,.08)', fill:true, tension:.4, pointRadius:0, borderWidth:1.5 },
-      { label:'Fraud', data:[...sData.fraud], borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.06)', fill:true, tension:.4, pointRadius:2, pointBackgroundColor:'#dc2626', borderWidth:1.5 }
-    ]
-  },
-  options: {
-    responsive:true, maintainAspectRatio:false, animation:{duration:300},
-    plugins:{ legend:{ labels:{ color:'#71717a', font:{size:11}, boxWidth:10, padding:12 } } },
-    scales: {
-      x:{ ticks:{color:'#a1a1aa',maxTicksLimit:6,font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'} },
-      y:{ ticks:{color:'#a1a1aa',font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'}, beginAtZero:true, min:0 }
+  // Chart.js global defaults
+  Chart.defaults.color = '#8b949e';
+  Chart.defaults.borderColor = '#30363d';
+  Chart.defaults.font.family = "'Inter', sans-serif";
+
+  // ==================== STATE ====================
+  let chartInstances = {};
+  let leaderboardData = [];
+  let leaderboardSortCol = 'f1';
+  let leaderboardSortAsc = false;
+  let refreshTimers = [];
+
+  // ==================== UTILITIES ====================
+
+  function fmt(val, digits = 4) {
+    if (val === null || val === undefined || val === '' || val === 'N/A') return '—';
+    const n = parseFloat(val);
+    if (isNaN(n)) return String(val);
+    return n.toFixed(digits);
+  }
+
+  function fmtPct(val) {
+    if (val === null || val === undefined) return '—';
+    return parseFloat(val).toFixed(2) + '%';
+  }
+
+  function fmtTime(val) {
+    if (val === null || val === undefined || val === 'N/A') return '—';
+    const n = parseFloat(val);
+    if (isNaN(n)) return val;
+    if (n < 1) return (n * 1000).toFixed(1) + ' ms';
+    return n.toFixed(2) + ' s';
+  }
+
+  function fmtNum(n) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString();
+  }
+
+  async function apiFetch(endpoint) {
+    const res = await fetch(API_BASE + endpoint);
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  }
+
+  function destroyChart(id) {
+    if (chartInstances[id]) {
+      chartInstances[id].destroy();
+      delete chartInstances[id];
     }
   }
-});
 
-const doughnutChart = new Chart(document.getElementById('doughnutChart'), {
-  type: 'doughnut',
-  data: { labels:['Legit','Fraud'], datasets:[{ data:[100,0], backgroundColor:['#16a34a','#dc2626'], borderWidth:0, hoverOffset:4 }] },
-  options: { cutout:'72%', animation:{duration:400}, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed.toFixed(2)}%`}} } }
-});
+  // ==================== TOAST ====================
 
-const aucChart = new Chart(document.getElementById('aucChart'), {
-  type: 'bar',
-  data: {
-    labels: ['AUC-ROC','AUC-PR','F1 Score'],
-    datasets: [
-      { label:'Random Forest', data:[0.9821, 0.7634, 0.9412], backgroundColor:'#2563eb', borderRadius:4, borderSkipped:false },
-      { label:'XGBoost', data:[1.0000, 1.0000, 1.0000], backgroundColor:'#7c3aed', borderRadius:4, borderSkipped:false }
-    ]
-  },
-  options: {
-    responsive:true, maintainAspectRatio:false, animation:{duration:600},
-    plugins:{
-      legend:{ display:true, position:'top', labels:{ boxWidth:8, font:{size:10}, color:'#71717a', padding:8 } }
-    },
-    scales: {
-      x:{ ticks:{color:'#a1a1aa',font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'} },
-      y:{ ticks:{color:'#a1a1aa',font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'}, max:1.05, min:0 }
+  function showToast(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toastContainer');
+    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'slideOut 0.3s ease forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  // ==================== NAV ====================
+
+  function scrollToSection(id) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    event?.target?.classList.add('active');
+  }
+
+  // Active nav on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        const sectionNavMap = {
+          overview: 0,
+          'model-performance': 1,
+          'live-transactions': 2,
+          agreement: 3,
+          leaderboard: 4
+        };
+        const links = document.querySelectorAll('.nav-link');
+        links.forEach(l => l.classList.remove('active'));
+        const idx = sectionNavMap[id];
+        if (idx !== undefined) links[idx]?.classList.add('active');
+      }
+    });
+  }, { threshold: 0.2 });
+
+  document.querySelectorAll('.section').forEach(s => observer.observe(s));
+
+  // ==================== PIPELINE CONTROLS ====================
+
+  async function fetchPipelineStatus() {
+    try {
+      const data = await apiFetch('/api/pipeline/status');
+      const running = data.running === true || data.status === 'running';
+      const dot = document.getElementById('pipelineStatusDot');
+      const text = document.getElementById('pipelineStatusText');
+      if (running) {
+        dot.className = 'status-dot running';
+        text.textContent = 'Running';
+      } else {
+        dot.className = 'status-dot';
+        text.textContent = 'Stopped';
+      }
+    } catch (e) {
+      document.getElementById('pipelineStatusText').textContent = 'Unknown';
     }
   }
-});
 
-const rfFeatures = [
-  {n:'amount',p:38},{n:'geo_risk_score',p:22},{n:'hour_of_day',p:14},
-  {n:'merchant_category',p:11},{n:'is_night_transaction',p:7},{n:'lat / lon',p:5},{n:'amount_bucket',p:3}
-];
-
-const xgbFeatures = [
-  {n:'amount',p:43},{n:'amount_bucket_Very High',p:16},{n:'merchant_category_travel',p:16},
-  {n:'amount_bucket_High',p:10},{n:'merchant_category_electronics',p:9},{n:'amount_bucket_Medium',p:4},{n:'amount_bucket_Low',p:2}
-];
-
-function renderFeatureList(list){
-  const el = document.getElementById('feat-list');
-  if(!el) return;
-  el.innerHTML = list.map(f =>
-    `<div class="feat-row"><div class="feat-name">${f.n}</div><div class="feat-bar-wrap"><div class="feat-bar" style="width:${f.p}%"></div></div><div class="feat-pct">${f.p}%</div></div>`
-  ).join('');
-}
-
-renderFeatureList(rfFeatures);
-
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function fmt(n){ return parseFloat(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
-
-let toastTimer = null;
-function toast(msg, type='info', ms=3500){
-  clearTimeout(toastTimer);
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.className = 'show ' + type;
-  toastTimer = setTimeout(() => el.className = '', ms);
-}
-
-function bump(id){
-  const el = document.getElementById(id);
-  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
-}
-
-function setKpi(id, text){
-  const el = document.getElementById(id);
-  if(el.textContent !== text){ el.textContent = text; bump(id); }
-}
-
-let prevTotal = 0, prevFraud = 0;
-function pushStream(total, fraud){
-  const dT = Math.max(0, total - prevTotal);
-  const dF = Math.max(0, fraud - prevFraud);
-  prevTotal = total; prevFraud = fraud;
-  sData.legit.shift(); sData.legit.push(Math.max(0, dT - dF));
-  sData.fraud.shift(); sData.fraud.push(dF);
-  streamChart.data.datasets[0].data = [...sData.legit];
-  streamChart.data.datasets[1].data = [...sData.fraud];
-  streamChart.update('none');
-  const msgRate = Math.round(dT / 3);
-  const elIn  = document.getElementById('kafka-in-rate');
-  const elOut = document.getElementById('kafka-out-rate');
-  if(elIn)  elIn.textContent  = msgRate;
-  if(elOut) elOut.textContent = msgRate;
-}
-
-async function fetchContainers(){
-  try{
-    const data = await fetch(`${API}/api/containers`).then(r => r.json());
-    const up = data.filter(c => c.running).length;
-    document.getElementById('containers-badge').textContent = `${up} / ${data.length} up`;
-    document.getElementById('container-list').innerHTML = data.length === 0
-      ? '<div style="color:var(--muted);font-size:.78rem">No containers running. Click <strong>Start Pipeline</strong> above.</div>'
-      : data.map(c => {
-          const nm  = c.name.replace('fraud-detection-pipeline-main-','');
-          const pts = c.ports ? c.ports.split(',').map(p => { const m = p.trim().match(/0\.0\.0\.0:(\d+)->/); return m?`:${m[1]}`:''; }).filter(Boolean).join(' ') : '';
-          return `<div class="ctr-row"><div class="dot ${c.running?'up':'dn'}"></div><span class="ctr-name">${nm}</span><span class="ctr-ports">${pts}</span><span class="ctr-status">${c.status.split(' ').slice(0,2).join(' ')}</span></div>`;
-        }).join('');
-  }catch(e){
-    document.getElementById('container-list').innerHTML = '<div style="color:var(--danger);font-size:.78rem">Cannot reach backend &mdash; is app.py running on :5050?</div>';
+  async function startPipeline() {
+    try {
+      document.getElementById('btnStart').disabled = true;
+      const res = await fetch(API_BASE + '/api/pipeline/start', { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showToast('Pipeline started successfully!', 'success');
+      await fetchPipelineStatus();
+    } catch (e) {
+      showToast(`Failed to start pipeline: ${e.message}`, 'error');
+    } finally {
+      document.getElementById('btnStart').disabled = false;
+    }
   }
-}
 
-async function fetchTransactions(){
-  try{
-    const d = await fetch(`${API}/api/transactions`).then(r => r.json());
-    const {total_seen:ts, fraud_count:fc, legit_count:lc, fraud_rate:fr, feed} = d;
-    setKpi('kpi-total', ts.toLocaleString());
-    setKpi('kpi-fraud', fc.toLocaleString());
-    setKpi('kpi-legit', lc.toLocaleString());
-    document.getElementById('kpi-fraud-rate').textContent = `${fr.toFixed(2)}% fraud rate`;
-    document.getElementById('feed-badge').textContent = `${ts.toLocaleString()} tx`;
-    document.getElementById('stat-fraud').textContent = fc.toLocaleString();
-    document.getElementById('stat-legit').textContent = lc.toLocaleString();
-    document.getElementById('donut-pct').textContent  = `${fr.toFixed(1)}%`;
-    doughnutChart.data.datasets[0].data = [lc, fc];
-    doughnutChart.update('none');
-    const fp = Math.min(fr * 2.5, 100);
-    document.getElementById('fraud-bar').style.width = `${fp}%`;
-    document.getElementById('legit-bar').style.width = `${Math.max(0, 100 - fp)}%`;
-    document.getElementById('fraud-bar-lbl').textContent = `${fr.toFixed(2)}%`;
-    document.getElementById('legit-bar-lbl').textContent = `${(100 - fr).toFixed(2)}%`;
-    pushStream(ts, fc);
-    if(feed && feed.length > 0){
-      document.getElementById('live-feed').innerHTML =
-        [...feed].reverse().slice(0, 25).map(t =>
-          `<div class="feed-item ${t.label}"><div class="fbadge ${t.label}">${t.label}</div><div class="ftid">${t.tid}</div><div class="famt">$${fmt(t.amount)}</div></div>`
-        ).join('');
+  async function stopPipeline() {
+    try {
+      document.getElementById('btnStop').disabled = true;
+      const res = await fetch(API_BASE + '/api/pipeline/stop', { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showToast('Pipeline stopped.', 'success');
+      await fetchPipelineStatus();
+    } catch (e) {
+      showToast(`Failed to stop pipeline: ${e.message}`, 'error');
+    } finally {
+      document.getElementById('btnStop').disabled = false;
     }
-  }catch(e){ console.error('fetchTransactions', e); }
-}
-
-let currentModelView = 'rf';
-let cachedModelData = null;
-
-function switchModelView(which){
-  currentModelView = which;
-  const btnRf = document.getElementById('tab-rf');
-  const btnXgb = document.getElementById('tab-xgb');
-  if(btnRf) btnRf.classList.toggle('active', which === 'rf');
-  if(btnXgb) btnXgb.classList.toggle('active', which === 'xgb');
-
-  const m = cachedModelData;
-  const x = m?.xgboost;
-
-  if(which === 'rf'){
-    const badge = document.getElementById('model-desc-badge');
-    if(badge) badge.textContent = 'Random Forest · 100 trees · depth 10';
-    const fbadge = document.getElementById('feat-badge');
-    if(fbadge) fbadge.textContent = 'RF Gini Impurity';
-    renderFeatureList(rfFeatures);
-
-    document.getElementById('m-auc-roc').textContent = (m?.auc_roc ?? 0.9821).toFixed(4);
-    document.getElementById('m-f1').textContent      = (m?.f1_score ?? 0.9412).toFixed(4);
-    document.getElementById('m-catch').textContent   = `${(m?.fraud_catch_rate ?? 87.43).toFixed(1)}%`;
-    document.getElementById('m-alarm').textContent   = `${(m?.false_alarm_rate ?? 0.0023).toFixed(4)}%`;
-
-    const kpiAuc = document.getElementById('kpi-auc'); if(kpiAuc) kpiAuc.textContent = (m?.auc_roc ?? 0.9821).toFixed(4);
-    const kpiF1 = document.getElementById('kpi-f1'); if(kpiF1) kpiF1.textContent = (m?.f1_score ?? 0.9412).toFixed(4);
-    const kpiCatch = document.getElementById('kpi-catch'); if(kpiCatch) kpiCatch.textContent = `${(m?.fraud_catch_rate ?? 87.43).toFixed(1)}%`;
-    const kpiSub = document.getElementById('kpi-auc-sub'); if(kpiSub) kpiSub.textContent = 'Random Forest model';
-
-    const cmTitle = document.getElementById('cm-title');
-    if(cmTitle) cmTitle.textContent = 'Confusion Matrix (test set · Random Forest)';
-    document.getElementById('cm-tn').textContent = '~43k';
-    document.getElementById('cm-fp').textContent = '1';
-    document.getElementById('cm-fn').textContent = '114';
-    document.getElementById('cm-tp').textContent = '793';
-  } else {
-    const badge = document.getElementById('model-desc-badge');
-    if(badge) badge.textContent = `XGBoost · ${x?.n_estimators ?? 150} trees · depth ${x?.max_depth ?? 6} · Real Dataset Trained`;
-    const fbadge = document.getElementById('feat-badge');
-    if(fbadge) fbadge.textContent = 'XGBoost Gain Importance (Real Data)';
-    if(x?.top_features && x.top_features.length > 0){
-      renderFeatureList(x.top_features.map((f, i) => ({ name: f.replace(/_/g, ' '), val: Math.max(0.08, 0.40 - i * 0.07) })));
-    } else {
-      renderFeatureList(xgbFeatures);
-    }
-
-    document.getElementById('m-auc-roc').textContent = (x?.auc_roc ?? 0.9902).toFixed(4);
-    document.getElementById('m-f1').textContent      = (x?.f1_score ?? 0.3902).toFixed(4);
-    document.getElementById('m-catch').textContent   = `${(x?.fraud_catch_rate_pct ?? 84.42).toFixed(1)}%`;
-    document.getElementById('m-alarm').textContent   = `${(x?.false_alarm_rate_pct ?? 0.9919).toFixed(4)}%`;
-
-    const kpiAuc = document.getElementById('kpi-auc'); if(kpiAuc) kpiAuc.textContent = (x?.auc_roc ?? 0.9902).toFixed(4);
-    const kpiF1 = document.getElementById('kpi-f1'); if(kpiF1) kpiF1.textContent = (x?.f1_score ?? 0.3902).toFixed(4);
-    const kpiCatch = document.getElementById('kpi-catch'); if(kpiCatch) kpiCatch.textContent = `${(x?.fraud_catch_rate_pct ?? 84.42).toFixed(1)}%`;
-    const kpiSub = document.getElementById('kpi-auc-sub'); if(kpiSub) kpiSub.textContent = 'XGBoost (Real Dataset)';
-
-    const cmTitle = document.getElementById('cm-title');
-    if(cmTitle) cmTitle.textContent = `Confusion Matrix (${x?.test_samples ? x.test_samples.toLocaleString() : '50,000'} Real Test Transactions · XGBoost)`;
-    document.getElementById('cm-tn').textContent = x?.true_negatives ? x.true_negatives.toLocaleString() : '49,307';
-    document.getElementById('cm-fp').textContent = x?.false_positives !== undefined ? x.false_positives.toLocaleString() : '494';
-    document.getElementById('cm-fn').textContent = x?.false_negatives !== undefined ? x.false_negatives.toLocaleString() : '31';
-    document.getElementById('cm-tp').textContent = x?.true_positives !== undefined ? x.true_positives.toLocaleString() : '168';
   }
-}
 
-async function fetchModel(){
-  try{
-    const m = await fetch(`${API}/api/model`).then(r => r.json());
-    cachedModelData = m;
+  async function replayPipeline() {
+    try {
+      const res = await fetch(API_BASE + '/api/pipeline/replay', { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showToast('Pipeline replay started from beginning.', 'info');
+    } catch (e) {
+      showToast(`Failed to replay pipeline: ${e.message}`, 'error');
+    }
+  }
 
-    document.getElementById('kpi-auc').textContent   = (m.auc_roc ?? 0.9821).toFixed(4);
-    document.getElementById('kpi-f1').textContent    = (m.f1_score ?? 0.9412).toFixed(4);
-    document.getElementById('kpi-catch').textContent = `${(m.fraud_catch_rate ?? 87.43).toFixed(1)}%`;
+  // ==================== SECTION B: OVERVIEW ====================
 
-    const x = m.xgboost;
-    const elRFAuc = document.getElementById('cmp-rf-auc'); if(elRFAuc) elRFAuc.textContent = (m.auc_roc ?? 0.9821).toFixed(4);
-    const elXGBAuc = document.getElementById('cmp-xgb-auc'); if(elXGBAuc) elXGBAuc.textContent = (x?.auc_roc ?? 0.9902).toFixed(4);
-    const elRFPr = document.getElementById('cmp-rf-pr'); if(elRFPr) elRFPr.textContent = (m.auc_pr ?? 0.7634).toFixed(4);
-    const elXGBPr = document.getElementById('cmp-xgb-pr'); if(elXGBPr) elXGBPr.textContent = (x?.auc_pr ?? 0.6501).toFixed(4);
-    const elRFF1 = document.getElementById('cmp-rf-f1'); if(elRFF1) elRFF1.textContent = (m.f1_score ?? 0.9412).toFixed(4);
-    const elXGBF1 = document.getElementById('cmp-xgb-f1'); if(elXGBF1) elXGBF1.textContent = (x?.f1_score ?? 0.3902).toFixed(4);
-    const elRFRec = document.getElementById('cmp-rf-recall'); if(elRFRec) elRFRec.textContent = `${(m.fraud_catch_rate ?? 87.43).toFixed(2)}%`;
-    const elXGBRec = document.getElementById('cmp-xgb-recall'); if(elXGBRec) elXGBRec.textContent = `${(x?.fraud_catch_rate_pct ?? 84.42).toFixed(2)}%`;
-    const elRFAlm = document.getElementById('cmp-rf-alarm'); if(elRFAlm) elRFAlm.textContent = `${(m.false_alarm_rate ?? 0.0023).toFixed(4)}%`;
-    const elXGBAlm = document.getElementById('cmp-xgb-alarm'); if(elXGBAlm) elXGBAlm.textContent = `${(x?.false_alarm_rate_pct ?? 0.9919).toFixed(4)}%`;
-
-    if(aucChart){
-      aucChart.data.datasets[0].data = [m.auc_roc ?? 0.9821, m.auc_pr ?? 0.7634, m.f1_score ?? 0.9412];
-      aucChart.data.datasets[1].data = [x?.auc_roc ?? 0.9902, x?.auc_pr ?? 0.6501, x?.f1_score ?? 0.3902];
-      aucChart.update();
+  async function fetchOverview() {
+    // Transactions
+    try {
+      const data = await apiFetch('/api/transactions');
+      document.getElementById('statTotal').textContent = fmtNum(data.total_seen ?? data.total ?? 0);
+      document.getElementById('statFraud').textContent = fmtNum(data.fraud_count ?? 0);
+      document.getElementById('statLegit').textContent = fmtNum(data.legit_count ?? 0);
+      const rate = data.fraud_rate ?? (data.fraud_count && data.total_seen ? (data.fraud_count / data.total_seen * 100).toFixed(2) : 0);
+      document.getElementById('statFraudRate').textContent = fmtPct(rate);
+    } catch (e) {
+      ['statTotal','statFraud','statLegit','statFraudRate'].forEach(id => {
+        document.getElementById(id).textContent = 'Error';
+      });
     }
 
-    switchModelView(currentModelView);
-  }catch(e){ console.error('fetchModel', e); }
-}
+    // Containers
+    try {
+      const data = await apiFetch('/api/containers');
+      renderContainerGrid(data);
+    } catch (e) {
+      document.getElementById('containerGrid').innerHTML = `<div style="color:var(--accent-red); font-size:13px;">Failed to load container statuses: ${e.message}</div>`;
+    }
+  }
 
-async function fetchFraud(){
-  try{
-    const d = await fetch(`${API}/api/fraud-caught`).then(r => r.json());
-    document.getElementById('fraud-caught-badge').textContent = `${d.total} caught`;
-    const tb = document.getElementById('fraud-tbody');
-    if(!d.records || !d.records.length){
-      tb.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px">No flagged records yet &mdash; consumer needs a few batches...</td></tr>';
+  function renderContainerGrid(data) {
+    const grid = document.getElementById('containerGrid');
+    const containers = Array.isArray(data) ? data : (data.containers || Object.entries(data).map(([name, info]) => ({
+      name, status: typeof info === 'string' ? info : info.status
+    })));
+
+    if (!containers.length) {
+      grid.innerHTML = '<div style="color:var(--text-secondary); font-size:13px;">No container data available.</div>';
       return;
     }
-    tb.innerHTML = d.records.reverse().map(r => {
-      const isXgb = (r.scored_by && r.scored_by.toLowerCase().includes('xgb'));
-      const badge = isXgb ? '<span class="model-badge-tag tag-xgb">XGBoost</span>' : '<span class="model-badge-tag tag-rf">Random Forest</span>';
-      return `<tr>
-        <td style="color:var(--muted)">${r.transaction_id.slice(0,16)}...</td>
-        <td class="td-amt">$${fmt(r.amount)}</td>
-        <td>${esc(r.merchant_category)}</td>
-        <td>${r.hour_of_day}</td>
-        <td>${parseFloat(r.geo_risk_score).toFixed(2)}</td>
-        <td>${badge}</td>
-        <td class="${r.is_fraud?'td-fraud':'td-legit'}">${r.is_fraud ? 'FRAUD' : 'Legit'}</td>
+
+    const icons = {
+      zookeeper: '🦒', kafka: '📨', 'spark-master': '⚡', 'spark-worker': '🔧',
+      'fraud-producer': '🏭', 'fraud-consumer': '🎯'
+    };
+
+    grid.innerHTML = containers.map(c => {
+      const name = c.name || c.service || 'Unknown';
+      const statusRaw = (c.status || 'unknown').toLowerCase();
+      const isUp = statusRaw.includes('up') || statusRaw === 'running' || statusRaw === 'healthy';
+      const icon = icons[name] || '🐳';
+      return `
+        <div class="container-card">
+          <div class="container-status-dot ${isUp ? 'up' : 'down'}"></div>
+          <div class="container-info">
+            <div class="container-name">${icon} ${name}</div>
+            <div class="container-status-text ${isUp ? 'up' : 'down'}">${isUp ? 'Up' : 'Stopped'}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ==================== SECTION C: MODEL PERFORMANCE ====================
+
+  async function fetchModelComparison() {
+    const container = document.getElementById('modelComparisonContent');
+
+    try {
+      const data = await apiFetch('/api/models/comparison');
+      renderModelComparison(data);
+    } catch (e) {
+      if (e.status === 404) {
+        container.innerHTML = `
+          <div class="alert-banner warning">
+            <span>⚠️</span>
+            <div>
+              <strong>Model comparison not available yet.</strong><br/>
+              Run: <code>python training/train_models.py && python training/evaluate_models.py</code>
+            </div>
+          </div>`;
+      } else {
+        container.innerHTML = `
+          <div class="alert-banner warning">
+            <span>⚠️</span>
+            <div>Failed to load model metrics: ${e.message}. Ensure the backend is running at <code>${API_BASE}</code>.</div>
+          </div>`;
+      }
+    }
+  }
+
+  function renderModelComparison(data) {
+    const container = document.getElementById('modelComparisonContent');
+
+    // Normalize data structure
+    const models = {
+      lr: data.linear_regression || data.lr || data['Linear Regression'] || {},
+      rf: data.random_forest || data.rf || data['Random Forest'] || {},
+      xgb: data.xgboost || data.xgb || data['XGBoost'] || {}
+    };
+
+    const metricRows = [
+      { key: 'accuracy',       label: 'Accuracy',       higherBetter: true,  fmt: v => fmt(v, 4) },
+      { key: 'precision',      label: 'Precision',      higherBetter: true,  fmt: v => fmt(v, 4) },
+      { key: 'recall',         label: 'Recall',         higherBetter: true,  fmt: v => fmt(v, 4) },
+      { key: 'f1',             label: 'F1 Score',       higherBetter: true,  fmt: v => fmt(v, 4) },
+      { key: 'roc_auc',        label: 'ROC-AUC',        higherBetter: true,  fmt: v => fmt(v, 4) },
+      { key: 'pr_auc',         label: 'PR-AUC',         higherBetter: true,  fmt: v => fmt(v, 4) },
+      { key: 'train_time',     label: 'Training Time',  higherBetter: false, fmt: v => fmtTime(v) },
+      { key: 'inference_time', label: 'Inference Time', higherBetter: false, fmt: v => fmtTime(v) },
+    ];
+
+    function getVal(model, key) {
+      const m = models[model];
+      return m[key] ?? m[key.replace('_', '')] ?? null;
+    }
+
+    // Build comparison table HTML
+    let tableHTML = `
+      <div class="card" style="padding:0; overflow:hidden; margin-bottom: 20px;">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th style="color: var(--lr-color);">Linear Regression</th>
+                <th style="color: var(--rf-color);">Random Forest</th>
+                <th style="color: var(--xgb-color);">XGBoost</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+    metricRows.forEach(row => {
+      const vals = { lr: getVal('lr', row.key), rf: getVal('rf', row.key), xgb: getVal('xgb', row.key) };
+      const nums = Object.values(vals).map(v => parseFloat(v)).filter(v => !isNaN(v));
+      const best = nums.length ? (row.higherBetter ? Math.max(...nums) : Math.min(...nums)) : null;
+
+      function cellClass(v) {
+        const n = parseFloat(v);
+        return (!isNaN(n) && best !== null && Math.abs(n - best) < 0.000001) ? 'best-value' : '';
+      }
+
+      tableHTML += `<tr>
+        <td style="font-weight:600; color:var(--text-secondary);">${row.label}</td>
+        <td class="${cellClass(vals.lr)}">${row.fmt(vals.lr)}</td>
+        <td class="${cellClass(vals.rf)}">${row.fmt(vals.rf)}</td>
+        <td class="${cellClass(vals.xgb)}">${row.fmt(vals.xgb)}</td>
+      </tr>`;
+    });
+
+    tableHTML += `</tbody></table></div></div>`;
+
+    // Charts
+    const chartsHTML = `
+      <div class="charts-row" style="margin-bottom: 20px;">
+        <div class="chart-card">
+          <div class="chart-card-title">Model Metric Comparison (Accuracy, Precision, Recall, F1)</div>
+          <div class="chart-wrapper"><canvas id="barComparisonChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Training Time vs Inference Time</div>
+          <div class="chart-wrapper"><canvas id="timeComparisonChart"></canvas></div>
+        </div>
+      </div>`;
+
+    // Confusion matrices
+    function buildCM(modelKey, modelLabel, colorVar) {
+      const m = models[modelKey];
+      const cm = m.confusion_matrix || {};
+      const tp = cm.tp ?? cm.TP ?? m.tp ?? '—';
+      const fp = cm.fp ?? cm.FP ?? m.fp ?? '—';
+      const fn = cm.fn ?? cm.FN ?? m.fn ?? '—';
+      const tn = cm.tn ?? cm.TN ?? m.tn ?? '—';
+
+      return `
+        <div class="confusion-card">
+          <div class="confusion-card-title">
+            <span style="width:10px;height:10px;border-radius:50%;background:${colorVar};display:inline-block;"></span>
+            ${modelLabel}
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:11px; color:var(--text-secondary); text-align:center; margin-bottom:4px;">
+            <div>Predicted Legit</div><div>Predicted Fraud</div>
+          </div>
+          <div class="confusion-matrix">
+            <div class="cm-cell cm-tn">
+              <div class="cm-value">${fmtNum(tn)}</div>
+              <div class="cm-label">TN</div>
+            </div>
+            <div class="cm-cell cm-fp">
+              <div class="cm-value">${fmtNum(fp)}</div>
+              <div class="cm-label">FP</div>
+            </div>
+            <div class="cm-cell cm-fn">
+              <div class="cm-value">${fmtNum(fn)}</div>
+              <div class="cm-label">FN</div>
+            </div>
+            <div class="cm-cell cm-tp">
+              <div class="cm-value">${fmtNum(tp)}</div>
+              <div class="cm-label">TP</div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:11px; color:var(--text-secondary); text-align:center; margin-top:4px;">
+            <div>Actual Legit</div><div>Actual Fraud</div>
+          </div>
+        </div>`;
+    }
+
+    const cmHTML = `
+      <div class="confusion-grid" style="margin-bottom: 20px;">
+        ${buildCM('lr',  'Linear Regression', 'var(--lr-color)')}
+        ${buildCM('rf',  'Random Forest',      'var(--rf-color)')}
+        ${buildCM('xgb', 'XGBoost',            'var(--xgb-color)')}
+      </div>`;
+
+    container.innerHTML = tableHTML + chartsHTML + cmHTML;
+
+    // Draw bar comparison chart
+    const barMetrics = ['accuracy', 'precision', 'recall', 'f1'];
+    const barLabels = ['Accuracy', 'Precision', 'Recall', 'F1 Score'];
+    destroyChart('barComparison');
+    const barCtx = document.getElementById('barComparisonChart').getContext('2d');
+    chartInstances['barComparison'] = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: barLabels,
+        datasets: [
+          {
+            label: 'Linear Regression',
+            data: barMetrics.map(k => parseFloat(getVal('lr', k)) || 0),
+            backgroundColor: 'rgba(79, 123, 223, 0.7)',
+            borderColor: '#4f7bdf',
+            borderWidth: 1,
+            borderRadius: 4,
+          },
+          {
+            label: 'Random Forest',
+            data: barMetrics.map(k => parseFloat(getVal('rf', k)) || 0),
+            backgroundColor: 'rgba(46, 204, 113, 0.7)',
+            borderColor: '#2ecc71',
+            borderWidth: 1,
+            borderRadius: 4,
+          },
+          {
+            label: 'XGBoost',
+            data: barMetrics.map(k => parseFloat(getVal('xgb', k)) || 0),
+            backgroundColor: 'rgba(231, 76, 60, 0.7)',
+            borderColor: '#e74c3c',
+            borderWidth: 1,
+            borderRadius: 4,
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { usePointStyle: true, padding: 16 } },
+          tooltip: { mode: 'index', intersect: false },
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            min: 0,
+            max: 1,
+            grid: { color: '#30363d' },
+            ticks: { callback: v => (v * 100).toFixed(0) + '%' }
+          },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+
+    // Draw time comparison chart
+    destroyChart('timeComparison');
+    const timeCtx = document.getElementById('timeComparisonChart').getContext('2d');
+    chartInstances['timeComparison'] = new Chart(timeCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Linear Regression', 'Random Forest', 'XGBoost'],
+        datasets: [
+          {
+            label: 'Training Time (s)',
+            data: ['lr','rf','xgb'].map(k => parseFloat(getVal(k, 'train_time')) || 0),
+            backgroundColor: ['rgba(79,123,223,0.7)', 'rgba(46,204,113,0.7)', 'rgba(231,76,60,0.7)'],
+            borderColor: ['#4f7bdf','#2ecc71','#e74c3c'],
+            borderWidth: 1,
+            borderRadius: 4,
+          },
+          {
+            label: 'Inference Time (s)',
+            data: ['lr','rf','xgb'].map(k => parseFloat(getVal(k, 'inference_time')) || 0),
+            backgroundColor: ['rgba(79,123,223,0.3)', 'rgba(46,204,113,0.3)', 'rgba(231,76,60,0.3)'],
+            borderColor: ['#4f7bdf','#2ecc71','#e74c3c'],
+            borderWidth: 1,
+            borderRadius: 4,
+            borderDash: [4,4],
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { usePointStyle: true, padding: 16 } },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(3)}s` } }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#30363d' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+
+    // Update leaderboard data
+    leaderboardData = [
+      { model: 'lr',  label: 'Linear Regression', ...extractMetrics(models.lr)  },
+      { model: 'rf',  label: 'Random Forest',      ...extractMetrics(models.rf)  },
+      { model: 'xgb', label: 'XGBoost',            ...extractMetrics(models.xgb) },
+    ];
+    renderLeaderboard();
+  }
+
+  function extractMetrics(m) {
+    return {
+      accuracy:       parseFloat(m.accuracy)       || null,
+      precision:      parseFloat(m.precision)      || null,
+      recall:         parseFloat(m.recall)         || null,
+      f1:             parseFloat(m.f1)             || null,
+      roc_auc:        parseFloat(m.roc_auc)        || null,
+      pr_auc:         parseFloat(m.pr_auc)         || null,
+      train_time:     parseFloat(m.train_time)     || null,
+      inference_time: parseFloat(m.inference_time) || null,
+    };
+  }
+
+  // ==================== SECTION D: LIVE TRANSACTIONS ====================
+
+  async function fetchLiveTransactions() {
+    try {
+      const data = await apiFetch('/api/predictions/live');
+      const records = data.records || data.transactions || data.predictions || (Array.isArray(data) ? data : []);
+      renderTransactions(records);
+    } catch (e) {
+      document.getElementById('txBody').innerHTML = `
+        <tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">
+          Failed to load transactions: ${e.message}
+        </td></tr>`;
+      document.getElementById('txCount').textContent = 'Error';
+    }
+  }
+
+  function renderTransactions(records) {
+    const tbody = document.getElementById('txBody');
+    const countEl = document.getElementById('txCount');
+    countEl.textContent = `${records.length} record${records.length !== 1 ? 's' : ''}`;
+
+    if (!records.length) {
+      tbody.innerHTML = `
+        <tr><td colspan="8">
+          <div class="empty-state">
+            <div class="empty-icon">📡</div>
+            <div class="empty-text">Waiting for Kafka stream to begin...</div>
+            <div class="empty-sub">No transactions received yet. Start the pipeline to begin streaming.</div>
+          </div>
+        </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = records.slice(0, 100).map(tx => {
+      const isActualFraud = tx.actual_is_fraud === 1 || tx.actual_is_fraud === true || tx.is_fraud === 1;
+      const lrPred  = tx.lr_prediction  ?? tx.lr  ?? tx['Linear Regression'] ?? null;
+      const rfPred  = tx.rf_prediction  ?? tx.rf  ?? tx['Random Forest']     ?? null;
+      const xgbPred = tx.xgb_prediction ?? tx.xgb ?? tx['XGBoost']          ?? null;
+
+      const agreement = tx.agreement || '';
+      const modelsDisagree = agreement === 'one_fraud' || agreement === 'two_fraud' ||
+        (lrPred !== null && rfPred !== null && xgbPred !== null &&
+         !(lrPred === rfPred && rfPred === xgbPred));
+
+      let rowClass = isActualFraud ? 'tx-row-fraud' : 'tx-row-legit';
+      if (modelsDisagree) rowClass = 'tx-row-disagree';
+
+      function predBadge(val) {
+        if (val === null || val === undefined) return '<span style="color:var(--text-secondary);">—</span>';
+        const isFraud = val === 1 || val === true || val === '1';
+        return isFraud
+          ? '<span class="badge badge-fraud">FRAUD</span>'
+          : '<span class="badge badge-ok">OK</span>';
+      }
+
+      const actualBadge = isActualFraud
+        ? '<span class="badge badge-fraud">FRAUD</span>'
+        : '<span class="badge badge-ok">OK</span>';
+
+      const time = tx.timestamp || tx.time || tx.created_at || '';
+      const timeStr = time ? new Date(time).toLocaleTimeString() : '—';
+      const amount = tx.amount ? `\$${parseFloat(tx.amount).toFixed(2)}` : '—';
+      const merchant = tx.merchant || tx.merchant_name || '—';
+      const shortId = String(tx.transaction_id || tx.id || tx.trans_num || '—').slice(0, 12);
+
+      return `<tr class="${rowClass}">
+        <td style="font-family:monospace; font-size:11px; color:var(--text-secondary);">${shortId}</td>
+        <td style="font-size:12px;">${timeStr}</td>
+        <td style="font-weight:600;">${amount}</td>
+        <td style="max-width:120px; overflow:hidden; text-overflow:ellipsis; font-size:12px;">${merchant}</td>
+        <td>${actualBadge}</td>
+        <td>${predBadge(lrPred)}</td>
+        <td>${predBadge(rfPred)}</td>
+        <td>${predBadge(xgbPred)}</td>
       </tr>`;
     }).join('');
-  }catch(e){}
-}
+  }
 
-async function fetchLogs(){
-  try{
-    const [pr, co] = await Promise.all([
-      fetch(`${API}/api/producer/logs`).then(r => r.json()),
-      fetch(`${API}/api/consumer/logs`).then(r => r.json())
-    ]);
-    function renderLog(elId, lines){
-      const el = document.getElementById(elId);
-      const atBottom = el.scrollHeight - el.clientHeight <= el.scrollTop + 30;
-      el.innerHTML = lines.slice(-80).map(l => {
-        const txt = l.raw || '';
-        const cls = txt.includes('FRAUD') ? 'fraud' : (txt.includes('legit') || txt.includes('LEGIT')) ? 'legit' : txt.includes('WARN') ? 'warn' : txt.includes('INFO') ? 'info' : '';
-        return `<div class="ll ${cls}">${esc(txt)}</div>`;
-      }).join('');
-      if(atBottom) el.scrollTop = el.scrollHeight;
+  // ==================== SECTION E: AGREEMENT ====================
+
+  let agreementChartInstance = null;
+
+  async function fetchAgreement() {
+    try {
+      const data = await apiFetch('/api/model-agreement');
+      renderAgreement(data);
+    } catch (e) {
+      document.getElementById('agreementLegend').innerHTML =
+        `<div style="color:var(--accent-red); font-size:13px;">Failed to load agreement data: ${e.message}</div>`;
     }
-    renderLog('producer-log', pr);
-    renderLog('consumer-log', co);
-  }catch(e){}
-}
-
-async function checkPipelineStatus(){
-  try{
-    const d = await fetch(`${API}/api/pipeline/status`).then(r => r.json());
-    document.getElementById('btn-start').disabled = d.running;
-    document.getElementById('btn-stop').disabled  = !d.running;
-  }catch(e){}
-}
-
-async function pipelineAction(action){
-  const bs   = document.getElementById('btn-start');
-  const bstp = document.getElementById('btn-stop');
-  bs.disabled = true; bstp.disabled = true;
-  const isStart = (action === 'start');
-  const activeBtn = isStart ? bs : bstp;
-  const orig = activeBtn.innerHTML;
-  activeBtn.innerHTML = `<span class="spin">&#x21BB;</span> ${isStart ? 'Starting...' : 'Stopping...'}`;
-  toast(isStart ? 'Starting pipeline, please wait...' : 'Stopping pipeline...', 'info', 10000);
-  try{
-    await fetch(`${API}/api/pipeline/${action}`, {method:'POST'});
-    toast(isStart ? 'Pipeline started.' : 'Pipeline stopped.', isStart ? 'success' : 'info');
-  }catch(e){
-    toast('Error: cannot reach backend', 'error');
   }
-  activeBtn.innerHTML = orig;
-  setTimeout(() => { checkPipelineStatus(); fetchContainers(); }, 4000);
-}
 
-async function refresh(){
-  await Promise.all([fetchContainers(), fetchTransactions(), fetchLogs()]);
-  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
-}
+  function renderAgreement(data) {
+    const allFraud   = data.all_fraud   ?? data.all_agree_fraud   ?? data['All 3 Agree Fraud']   ?? 0;
+    const allLegit   = data.all_legit   ?? data.all_agree_legit   ?? data['All 3 Agree Legit']   ?? 0;
+    const oneFlag    = data.one_fraud   ?? data.one_flagged        ?? data['1 Model Flagged']      ?? 0;
+    const twoFlag    = data.two_fraud   ?? data.two_flagged        ?? data['2 Models Flagged']     ?? 0;
 
-fetchModel();
-checkPipelineStatus();
-refresh();
-fetchFraud();
+    const labels = ['All 3 Agree: Fraud', 'All 3 Agree: Legit', 'Only 1 Flagged', 'Exactly 2 Flagged'];
+    const values = [allFraud, allLegit, oneFlag, twoFlag];
+    const colors = ['#f85149', '#3fb950', '#d29922', '#58a6ff'];
+    const total  = values.reduce((a, b) => a + b, 0);
 
-setInterval(refresh,             3000);
-setInterval(fetchFraud,         10000);
-setInterval(checkPipelineStatus,10000);
-setInterval(fetchModel,         60000);
+    if (agreementChartInstance) { agreementChartInstance.destroy(); }
 
-/* ── Metric explanations ─────────────────────────────── */
-const METRIC_INFO = {
-  auc_roc: {
-    title: 'AUC-ROC Score',
-    scoreId: 'kpi-auc',
-    scoreClass: 'purple',
-    what: 'AUC-ROC (Area Under the Receiver Operating Characteristic Curve) measures how well the model separates fraudulent transactions from legitimate ones — at every possible decision threshold.',
-    inContext: 'In this pipeline, the Random Forest model scores each transaction streamed through Kafka + Spark. An AUC-ROC of <strong>0.9821</strong> means that if you randomly pick one fraud and one legit transaction, the model ranks the fraud higher 98.21% of the time — even with the heavy class imbalance in the dataset (fraud is rare).',
-    verdict: 'good',
-    verdictText: 'Excellent. A score above 0.98 is production-grade for fraud detection. The model generalises well across the full spectrum of fraud risk scores.'
-  },
-  f1_score: {
-    title: 'F1 Score',
-    scoreId: 'kpi-f1',
-    scoreClass: 'cyan',
-    what: 'F1 Score is the harmonic mean of Precision (how many flagged transactions are actually fraud) and Recall (how many real frauds are caught). It penalises both false alarms and missed fraud equally.',
-    inContext: 'In fraud detection, both errors are costly — a false alarm frustrates a legitimate customer; a missed fraud means real financial loss. Our weighted F1 of <strong>0.9412</strong> balances these on the heavily skewed test set (~43k legit vs ~907 fraud cases). The confusion matrix shows only 1 false alarm and 114 missed frauds out of 907 total.',
-    verdict: 'good',
-    verdictText: 'Strong. F1 above 0.94 on an imbalanced fraud dataset is a meaningful result. The 114 missed cases (false negatives) are the main area for improvement.'
-  },
-  catch_rate: {
-    title: 'Fraud Catch Rate',
-    scoreId: 'kpi-catch',
-    scoreClass: 'amber',
-    what: 'Fraud Catch Rate (Recall / True Positive Rate) is the percentage of all actual fraudulent transactions that the model correctly flags. The remainder are missed frauds — false negatives.',
-    inContext: 'Of the 907 fraud cases in the test set, the model catches <strong>793</strong> (87.4%) and misses <strong>114</strong>. Each missed fraud that passes through the Spark consumer represents a transaction the model let slip as "legit". In a live Kafka stream, those 12.6% would be undetected in real time.',
-    verdict: 'warn',
-    verdictText: 'Good, but improvable. 87.4% catch rate is solid for a baseline RF model. Raising it requires careful threshold tuning or a more recall-biased model — at the cost of more false alarms.'
-  },
-  false_alarm: {
-    title: 'False Alarm Rate',
-    scoreId: 'kpi-auc',
-    scoreClass: 'amber',
-    what: 'False Alarm Rate (Fall-out / False Positive Rate) is the share of legitimate transactions incorrectly flagged as fraud by the model.',
-    inContext: 'Out of ~43,000 legitimate test transactions, the Random Forest model wrongly blocked just <strong>1</strong> — a false alarm rate of 0.0023%. In the Spark consumer stream, this means almost no innocent customers are disrupted. This extremely low rate is partly because the model is conservative: it errs toward letting things through, which is why the catch rate is 87% rather than 95%+.',
-    verdict: 'good',
-    verdictText: 'Excellent. Near-zero false alarms. This keeps customer friction minimal in the live pipeline, but it comes with the trade-off of missing ~12.6% of actual fraud.'
-  },
-  total_seen: {
-    title: 'Transactions Seen',
-    scoreId: 'kpi-total',
-    scoreClass: 'blue',
-    what: 'The cumulative count of all transactions processed in this session — both fraudulent and legitimate.',
-    inContext: 'The Python Faker producer generates synthetic transactions and publishes them to the Kafka topic <code>transactions</code>. The Spark Streaming consumer reads them in micro-batches, runs each one through the Random Forest model, and emits a fraud/legit label. This counter reflects the total messages the producer has sent since the pipeline started.',
-    verdict: 'info',
-    verdictText: 'This is the raw throughput counter. Watch the Transaction Stream chart to see the real-time per-second rate split between fraud and legit.'
-  },
-  fraud_detected: {
-    title: 'Fraud Detected',
-    scoreId: 'kpi-fraud',
-    scoreClass: 'red',
-    what: 'The number of transactions the producer labelled as FRAUD that have been streamed through Kafka in this session.',
-    inContext: 'The producer uses Python Faker to generate realistic-looking transactions, sampling from a fraud probability distribution that mirrors real-world imbalance. When a transaction is labelled FRAUD by the producer, it still goes through the Spark consumer for ML scoring — the ML-flagged count may differ since the model has its own 87.4% catch rate.',
-    verdict: 'info',
-    verdictText: 'This counts producer-labelled fraud (ground truth), not ML-detected fraud. Compare it with the ML-Flagged Transactions table to see how many the model correctly identified.'
-  },
-  legit_txns: {
-    title: 'Legit Transactions',
-    scoreId: 'kpi-legit',
-    scoreClass: 'green',
-    what: 'The number of transactions labelled as legitimate by the producer and passed through the ML scoring pipeline.',
-    inContext: 'Legit transactions flow from the Python Faker producer → Kafka broker → Spark consumer → Random Forest model. The model should pass the vast majority through with a legit prediction. The False Alarm Rate of 0.0023% means only about 1 in 43,000 legit transactions gets wrongly flagged.',
-    verdict: 'good',
-    verdictText: 'High legit throughput with minimal false alarms means the pipeline is not blocking real customers. The live feed panel shows a real-time sample of these transactions.'
+    const ctx = document.getElementById('agreementChart').getContext('2d');
+    agreementChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors.map(c => c + 'cc'),
+          borderColor: colors,
+          borderWidth: 2,
+          hoverOffset: 8,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const pct = total ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                return ` ${ctx.label}: ${fmtNum(ctx.raw)} (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const legendEl = document.getElementById('agreementLegend');
+    legendEl.innerHTML = labels.map((label, i) => {
+      const pct = total ? ((values[i] / total) * 100).toFixed(1) : '0.0';
+      return `
+        <div class="legend-item">
+          <div class="legend-dot" style="background:${colors[i]};"></div>
+          <div class="legend-label">${label}</div>
+          <div class="legend-value">${fmtNum(values[i])} <span style="color:var(--text-secondary); font-weight:400; font-size:11px;">(${pct}%)</span></div>
+        </div>`;
+    }).join('');
   }
-};
 
-function openModal(metricKey) {
-  const info = METRIC_INFO[metricKey];
-  if (!info) return;
+  // ==================== SECTION F: LEADERBOARD ====================
 
-  // Read the live score value from the DOM
-  const scoreEl = document.getElementById(info.scoreId);
-  const liveScore = scoreEl ? scoreEl.textContent.trim() : '—';
+  function sortLeaderboard(col) {
+    if (leaderboardSortCol === col) {
+      leaderboardSortAsc = !leaderboardSortAsc;
+    } else {
+      leaderboardSortCol = col;
+      leaderboardSortAsc = col === 'model' ? true : false;
+    }
 
-  document.getElementById('modal-title').textContent = info.title;
+    // Update header styles
+    document.querySelectorAll('#leaderboardTable th.sortable').forEach(th => {
+      th.classList.remove('sorted-asc', 'sorted-desc');
+      if (th.dataset.col === col) {
+        th.classList.add(leaderboardSortAsc ? 'sorted-asc' : 'sorted-desc');
+      }
+    });
 
-  const scoreDiv = document.getElementById('modal-score');
-  scoreDiv.textContent = liveScore;
-  scoreDiv.className = 'modal-score ' + info.scoreClass;
+    renderLeaderboard();
+  }
 
-  document.getElementById('modal-body').innerHTML = `
-    <div>
-      <div class="modal-section-title">What it measures</div>
-      <div class="modal-text">${info.what}</div>
-    </div>
-    <div>
-      <div class="modal-section-title">In this project</div>
-      <div class="modal-text">${info.inContext}</div>
-    </div>
-    <div class="modal-verdict ${info.verdict}">${info.verdictText}</div>
-  `;
+  function renderLeaderboard() {
+    const tbody = document.getElementById('leaderboardBody');
+    if (!leaderboardData.length) {
+      tbody.innerHTML = `
+        <tr><td colspan="8" class="loading-cell">
+          <div class="empty-state">
+            <div class="empty-icon">🏆</div>
+            <div class="empty-text">No model data available</div>
+            <div class="empty-sub">Run model training to see the leaderboard.</div>
+          </div>
+        </td></tr>`;
+      return;
+    }
 
-  document.getElementById('modal-backdrop').classList.add('open');
-}
+    const sorted = [...leaderboardData].sort((a, b) => {
+      let va = a[leaderboardSortCol], vb = b[leaderboardSortCol];
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      return leaderboardSortAsc ? cmp : -cmp;
+    });
 
-function closeModalDirect() {
-  document.getElementById('modal-backdrop').classList.remove('open');
-}
+    // Find best per metric
+    const metricKeys = ['recall', 'precision', 'f1', 'pr_auc', 'roc_auc'];
+    const best = {};
+    metricKeys.forEach(k => {
+      const vals = leaderboardData.map(d => d[k]).filter(v => v !== null);
+      best[k] = vals.length ? Math.max(...vals) : null;
+    });
+    // For train_time, best = minimum
+    const trainTimes = leaderboardData.map(d => d.train_time).filter(v => v !== null);
+    best.train_time = trainTimes.length ? Math.min(...trainTimes) : null;
 
-function closeModal(e) {
-  if (e.target === document.getElementById('modal-backdrop')) closeModalDirect();
-}
+    const modelClass = { lr: 'lr', rf: 'rf', xgb: 'xgb' };
+    const medals = ['🥇', '🥈', '🥉'];
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModalDirect();
-});
+    tbody.innerHTML = sorted.map((row, idx) => {
+      function bestIcon(key, val, isLower = false) {
+        if (val === null) return '';
+        const b = best[key];
+        const isBest = b !== null && Math.abs(val - b) < 0.0001;
+        return isBest ? ' <span class="best-metric-icon">🥇</span>' : '';
+      }
 
-// Delegate clicks on all data-metric elements
-document.addEventListener('click', e => {
-  const el = e.target.closest('[data-metric]');
-  if (el) openModal(el.dataset.metric);
-});
+      return `<tr>
+        <td><span class="rank-medal">${medals[idx] || (idx + 1)}</span></td>
+        <td><span class="model-pill ${modelClass[row.model]}">${row.label}</span></td>
+        <td>${row.recall   !== null ? (row.recall   * 100).toFixed(2) + '%' : '—'}${bestIcon('recall',    row.recall)}</td>
+        <td>${row.precision !== null ? (row.precision * 100).toFixed(2) + '%' : '—'}${bestIcon('precision', row.precision)}</td>
+        <td style="font-weight:700;">${row.f1 !== null ? (row.f1 * 100).toFixed(2) + '%' : '—'}${bestIcon('f1', row.f1)}</td>
+        <td>${row.pr_auc  !== null ? fmt(row.pr_auc,  4) : '—'}${bestIcon('pr_auc',  row.pr_auc)}</td>
+        <td>${row.roc_auc !== null ? fmt(row.roc_auc, 4) : '—'}${bestIcon('roc_auc', row.roc_auc)}</td>
+        <td>${row.train_time !== null ? fmtTime(row.train_time) : '—'}${bestIcon('train_time', row.train_time, true)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ==================== AUTO REFRESH ====================
+
+  async function refreshLiveSections() {
+    await Promise.allSettled([
+      fetchOverview(),
+      fetchLiveTransactions(),
+      fetchAgreement(),
+      fetchPipelineStatus(),
+    ]);
+  }
+
+  async function initDashboard() {
+    // Initial parallel loads
+    await Promise.allSettled([
+      fetchPipelineStatus(),
+      fetchOverview(),
+      fetchModelComparison(),
+      fetchLiveTransactions(),
+      fetchAgreement(),
+    ]);
+
+    // Setup periodic refresh for live sections
+    setInterval(refreshLiveSections, REFRESH_INTERVAL_MS);
+  }
+
+  // ==================== BOOT ====================
+  document.addEventListener('DOMContentLoaded', initDashboard);
 </script>
 </body>
 </html>

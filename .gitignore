@@ -2,17 +2,25 @@
 *.csv
 *.parquet
 
+# Checksum & temp files
+*.crc
+
 # Jupyter
 .ipynb_checkpoints/
 
-# ML model artifacts
+# Legacy model artifacts
 fraud_rf_model/
+**/fraud_rf_model/
 
-# Runtime output (flagged fraud copied from Docker containers)
+# Runtime output and storage
 temp_flagged/
 temp_flagged_dash/
 temp_flagged_xgb/
 archive_flagged/
+storage/
+**/storage/
+checkpoints/
+**/checkpoints/
 
 # Training data
 training_data/

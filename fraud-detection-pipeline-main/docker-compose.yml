@@ -69,7 +69,7 @@ services:
 
   consumer:
     build:
-      context: .                        # project root — gives Dockerfile access to features/
+      context: .
       dockerfile: consumer/Dockerfile
     container_name: fraud-consumer
     user: root
@@ -79,8 +79,13 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KAFKA_TOPIC: transactions
       SPARK_MASTER: spark://spark-master:7077
+      MODELS_DIR: /app/models
+      OUTPUT_PATH: /data/storage/predictions/combined_predictions
+      CHECKPOINT_PATH: /data/storage/checkpoints/consumer_v2
     volumes:
-      - fraud-data:/data
+      - ./storage:/data/storage
+      - ./models:/app/models:ro        # trained models (read-only inside container)
+      - ./results:/app/results:ro      # model comparison JSON
     ports:
       - "4040:4040"
     restart: on-failure
@@ -90,4 +95,4 @@ networks:
     name: fraud-detection-net
 
 volumes:
-  fraud-data:    # persists Parquet output and survives container restarts
+  fraud-data:    # persists Parquet output and checkpoints across container restarts
