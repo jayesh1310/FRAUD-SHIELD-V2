@@ -38,6 +38,7 @@ venv/
 
 # Logs
 *.log
+.fraudshield-dashboard.pid
 
 # OS
 .DS_Store
