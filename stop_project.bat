@@ -20,7 +20,7 @@ echo.
 :: 2. Terminate Dashboard process
 echo [Step 2/3] Terminating Dashboard backend process...
 if exist "%ROOT_DIR%.fraudshield-dashboard.pid" (
-    powershell -NoProfile -Command "$pidFile = Join-Path $env:ROOT_DIR '.fraudshield-dashboard.pid'; if (Test-Path $pidFile) { $pId = (Get-Content $pidFile -Raw).Trim(); if ($pId) { Stop-Process -Id $pId -Force -ErrorAction SilentlyContinue }; Remove-Item $pidFile -Force -ErrorAction SilentlyContinue }" >nul 2>&1
+    powershell -NoProfile -Command "$pidFile = '%ROOT_DIR%.fraudshield-dashboard.pid'; if (Test-Path $pidFile) { $pId = (Get-Content $pidFile -Raw).Trim(); if ($pId) { Stop-Process -Id $pId -Force -ErrorAction SilentlyContinue }; Remove-Item $pidFile -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 )
 powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'dashboard[/\\]app\.py|transaction_producer|spark_consumer' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 echo   [OK] Host Python processes stopped.

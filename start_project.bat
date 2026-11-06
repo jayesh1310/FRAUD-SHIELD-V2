@@ -106,7 +106,7 @@ echo.
 
 :: 6. Launch Flask Dashboard
 echo [Step 4/5] Launching Flask Dashboard Backend on http://localhost:5050 ...
-powershell -NoProfile -Command "$p = Start-Process -FilePath python -ArgumentList 'app.py' -WorkingDirectory (Join-Path $env:ROOT_DIR 'dashboard') -PassThru; Set-Content -LiteralPath (Join-Path $env:ROOT_DIR '.fraudshield-dashboard.pid') -Value $p.Id"
+powershell -NoProfile -Command "$p = Start-Process -FilePath python -ArgumentList 'app.py' -WorkingDirectory '%ROOT_DIR%dashboard' -PassThru; Set-Content -LiteralPath '%ROOT_DIR%.fraudshield-dashboard.pid' -Value $p.Id"
 
 echo [INFO] Waiting for Dashboard to respond on port 5050...
 powershell -NoProfile -Command "for ($i = 0; $i -lt 25; $i++) { Start-Sleep -Seconds 1; try { $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5050/api/health' -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch {} }; exit 1"
