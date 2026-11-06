@@ -108,13 +108,19 @@ def main():
 
     # ── Load models ──────────────────────────────────────────────────────────
     print("[Consumer] Loading preprocessing pipeline …", flush=True)
-    prep_model = PipelineModel.load(os.path.join(MODELS_DIR, "preprocessor"))
+    prep_path_str = os.path.join(MODELS_DIR, "preprocessor").replace("\\", "/")
+    j_prep = spark._jvm.org.apache.spark.ml.PipelineModel.load(prep_path_str)
+    prep_model = PipelineModel._from_java(j_prep)
 
     print("[Consumer] Loading Linear Regression model …", flush=True)
-    lr_model = LinearRegressionModel.load(os.path.join(MODELS_DIR, "linear_regression"))
+    lr_path_str = os.path.join(MODELS_DIR, "linear_regression").replace("\\", "/")
+    j_lr = spark._jvm.org.apache.spark.ml.regression.LinearRegressionModel.load(lr_path_str)
+    lr_model = LinearRegressionModel._from_java(j_lr)
 
     print("[Consumer] Loading Random Forest model …", flush=True)
-    rf_model = RandomForestClassificationModel.load(os.path.join(MODELS_DIR, "random_forest"))
+    rf_path_str = os.path.join(MODELS_DIR, "random_forest").replace("\\", "/")
+    j_rf = spark._jvm.org.apache.spark.ml.classification.RandomForestClassificationModel.load(rf_path_str)
+    rf_model = RandomForestClassificationModel._from_java(j_rf)
 
     xgb_model_path = os.path.join(MODELS_DIR, "xgboost", "xgb_model.json")
     print(f"[Consumer] Loading XGBoost model: {xgb_model_path}", flush=True)

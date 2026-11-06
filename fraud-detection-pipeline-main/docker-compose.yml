@@ -59,6 +59,7 @@ services:
     depends_on:
       - kafka
     environment:
+      PYTHONUNBUFFERED: "1"
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KAFKA_TOPIC: transactions
       TRANSACTIONS_PER_SECOND: "25"
@@ -76,6 +77,7 @@ services:
     depends_on:
       - kafka
     environment:
+      PYTHONUNBUFFERED: "1"
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KAFKA_TOPIC: transactions
       SPARK_MASTER: spark://spark-master:7077
@@ -86,6 +88,8 @@ services:
       - ./storage:/data/storage
       - ./models:/app/models:ro        # trained models (read-only inside container)
       - ./results:/app/results:ro      # model comparison JSON
+      - ./consumer/spark_consumer_ml.py:/app/spark_consumer_ml.py:ro
+      - ./features:/app/features:ro
     ports:
       - "4040:4040"
     restart: on-failure
